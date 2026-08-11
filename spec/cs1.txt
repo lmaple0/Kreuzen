@@ -349,19 +349,22 @@
 5D07 str f32 f32 f32 f32 u16 u8
 5D08 str f32 f32 f32 u16 u8
 5D09 str
+
+5E 'Link'
 5E00 'LinkSetCombatLink' char char u32
 5E01 u16
 5E02 'LinkSetLevel' char char u16
 5E04 'LinkSetLevelCap' u16
 5E05 'LinkSetExp' char char u16
-5E06 'LinkAddExp' char char u16 u32
-5E07 u16
-5E08 u16
-5E09 u16
+5E06 'LinkAddExp' char char u16 u32 # last parameter decides mode: 0 - delayed, only added when 'LinkUpdate' is called; 1 - instant, silent
+5E07 'LinkShowExpGain' u16 # parameter decides mode: 0 - default mode; 1 - quick mode, only displays box when added exp triggers level up
+5E08 'LinkUpdate' u16
+5E09 'LinkWait' u16 # has to be called immediately after 'LinkShowExpGain', otherwise the box is not displayed
 5E0A 'LinkDisableCombatLinking' char char u8
 5E0B u16
 5E0C 'LinkGetLevel' char char
 5E0D 'LinkGetExp' char char
+
 5F 'CharPath' char
 5F00 'CharPathPlay' f32 u8 u16
 5F01 'CharPathBegin'

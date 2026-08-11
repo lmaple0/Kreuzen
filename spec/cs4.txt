@@ -603,20 +603,20 @@
 # 681E str str str str f32 f32 f32
 
 69 'Link'
-6900 char char u8 u8 u8
+6900 'LinkSetCombatLink' char char u8 u8 u8
 6901 u16
 6902 'LinkSetLevel' char char u16
-6904 u16
+6904 'LinkSetLevelCap' u16
 6905 'LinkSetExp' char char u16
-6906 'LinkAddExp' char char u16 u32
-6907 u16
-6908 u16
-6909 u16
+6906 'LinkAddExp' char char u16 u32 # last parameter decides mode: 0 - delayed, only added when 'LinkUpdate' is called; 1 - instant, silent
+6907 'LinkShowExpGain' u16 # parameter decides mode: 0 - default mode; 1 - quick mode, only displays box when added exp triggers level up
+6908 'LinkUpdate' u16
+6909 'LinkWait' u16 # has to be called immediately after 'LinkShowExpGain', otherwise the box is not displayed
 690B u16
-# 6913 u16
+# 6913 'LinkSetBravePoints_Old' u16
 6914 'LinkAuto' u8 u8
-6915 u16
-6916
+6915 'LinkSetBravePoints' u16
+6916 'LinkGetBravePoints'
 6918 u16 u16 u16 u8 u8 u8
 
 6A   'CharPath' char
@@ -909,16 +909,16 @@ C500 u8 u8
 C501
 
 C6 'Bond'
-C600 'BondShow' u8
-C601 'BondWait'
-# C602 char u8
-C603 'BondSetLevel' char u8
+C600 'BondShowExpGain' u8 # parameter decides mode: 0 - default mode; 1 - quick mode, only displays info about level up
+C601 'BondWait' # has to be called immediately after 'BondShowExpGain', otherwise the box is not displayed
+C602 'BondSetLevel' char u8
+C603 'BondAddLevel' char u8
 C604 'BondSetExp' char u32
 C605 'BondAddExp' char u32
 C606 'BondGetLevel' char
 C607 'BondGetExp' char
-C608 char u8 u8 u8
-C609 char
+C608 'BondShowEventCost' char u8 u8 u8
+C609 'BondGetRomanceLevel' char
 
 C700
 C701 u16 u32

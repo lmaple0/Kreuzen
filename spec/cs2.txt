@@ -458,25 +458,28 @@
 5E09 str
 5E0A str
 5E0B str u16
+
+5F 'Link'
 5F00 'LinkSetCombatLink' char char u8 u32
 5F01 u16
 5F02 'LinkSetLevel' char char u16
 5F04 'LinkSetLevelCap' u16
 5F05 'LinkSetExp' char char u16
-5F06 'LinkAddExp' char char u16 u32
-5F07 u16
-5F08 u16
-5F09 u16
+5F06 'LinkAddExp' char char u16 u32 # last parameter decides mode: 0 - delayed, only added when 'LinkUpdate' is called; 1 - instant, silent
+5F07 'LinkShowExpGain' u16 # parameter decides mode: 0 - default mode; 1 - quick mode, only displays box when added exp triggers level up
+5F08 'LinkUpdate' u16
+5F09 'LinkWait' u16 # has to be called immediately after 'LinkShowExpGain', otherwise the box is not displayed
 5F0A 'LinkDisableCombatLinking' char char u8
 5F0B u16
 5F0C 'LinkGetLevel' char char
 5F0D 'LinkGetExp' char char
 5F0E 'LinkUnlockOverdrive' char char u32
 5F0F 'LinkIsOverdriveUnlocked' char char
-5F10 u16 u16
-5F11 u16 u16
+5F10 'LinkSetOverdriveGauge' u16 u16 # 1000 = 1 full gauge
+5F11 'LinkAddOverdriveGauge' u16 u16
 5F12 u16 u16
-5F13 u16
+5F13 'LinkSetBravePoints' u16
+
 60 'CharPath' char
 6000 'CharPathPlay' f32 u8 u16
 6001 'CharPathBegin'
