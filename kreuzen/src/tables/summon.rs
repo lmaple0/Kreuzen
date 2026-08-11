@@ -41,7 +41,7 @@ fn write_summon(f: &mut Writer, d: &OData, s: &Summon) -> rootcause::Result<()> 
 	f.u16(s.kind);
 	f.u8(s.a);
 	f.u8(s.b);
-	f.sstr(32, d.enc, &s.name)?;
+	f.sstr(32, d.enc, d.charmap, &s.name)?;
 	Ok(())
 }
 

@@ -1,7 +1,7 @@
 use gospel::read::Le as _;
 use gospel::write::{Le as _, Writer};
 
-use crate::Enc;
+use crate::io::OData;
 use crate::types::{Item, Magic, Sound};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -91,10 +91,10 @@ impl Text {
 		Ok(Text(out))
 	}
 
-	pub(crate) fn write(&self, enc: Enc, f: &mut Writer) -> rootcause::Result<()> {
+	pub(crate) fn write(&self, d: &OData, f: &mut Writer) -> rootcause::Result<()> {
 		for part in &self.0 {
 			match part {
-				TextPart::String(s) => f.slice(&encode(enc, s)?),
+				TextPart::String(s) => f.slice(&crate::io::encode(d.enc, s, d.charmap)?),
 				TextPart::Control(c) => match *c {
 					TextControl::Line => f.u8(0x01),
 					TextControl::Pause => f.u8(0x02),
@@ -135,15 +135,5 @@ impl Text {
 		}
 		f.u8(0x00);
 		Ok(())
-	}
-}
-
-fn encode(enc: Enc, s: &str) -> rootcause::Result<Vec<u8>> {
-	match enc {
-		Enc::Utf8 => Ok(s.as_bytes().to_vec()),
-		Enc::Sjis => match falcom_sjis::encode(s) {
-			Ok(bytes) => Ok(bytes),
-			Err(pos) => rootcause::bail!("invalid Shift-JIS in text at byte {pos}: {s:?}"),
-		},
 	}
 }

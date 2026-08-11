@@ -110,7 +110,7 @@ pub(crate) fn write(d: &OData, preload: &[Preload]) -> rootcause::Result<Writer>
 		f.u16(kind);
 		f.u16(charid.0);
 		f.u32(u32);
-		f.sstr(32, d.enc, str)
+		f.sstr(32, d.enc, d.charmap, str)
 	};
 	for p in preload {
 		match p {

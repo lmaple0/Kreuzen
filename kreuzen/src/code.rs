@@ -802,7 +802,7 @@ fn write_parts(d: &OData, f: &mut Writer, op: &Op, cursor: &mut usize, parts: &[
 				Arg::F32Munged(v) => f.i32(*v),
 				a => rootcause::bail!("expected F32 in {}, got {a:?}", op.name),
 			},
-			P::Str => f.str(d.enc, arg!(Str))?,
+			P::Str => f.str(d.enc, d.charmap, arg!(Str))?,
 
 			P::Char => f.u16(arg!(Char).0),
 			P::Item => f.u16(arg!(Item).0),
@@ -840,7 +840,7 @@ fn write_parts(d: &OData, f: &mut Writer, op: &Op, cursor: &mut usize, parts: &[
 				*op_end = f.len();
 				arg!(Expr).write(d, f)?
 			}
-			P::Text => arg!(Text).write(d.enc, f)?,
+			P::Text => arg!(Text).write(d, f)?,
 			P::Dyn => write_dyn(f, d, take_arg(op, cursor)?)?,
 			P::Ndyn => {
 				let n = op.args.len() - *cursor;

@@ -29,8 +29,8 @@ pub(crate) fn write(d: &OData, table: &[AnimeClip]) -> rootcause::Result<Writer>
 	let mut f = Writer::new();
 	for clip in table {
 		f.u32(clip.kind);
-		f.sstr(32, d.enc, &clip.a)?;
-		f.sstr(32, d.enc, &clip.b)?;
+		f.sstr(32, d.enc, d.charmap, &clip.a)?;
+		f.sstr(32, d.enc, d.charmap, &clip.b)?;
 	}
 	f.u32(0);
 	f.u16(0);

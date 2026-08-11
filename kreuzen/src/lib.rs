@@ -4,6 +4,7 @@ use gospel::write::{Label, Le as _, Writer};
 use crate::code::FlatOp;
 use crate::io::{CReader, WriterExt as _};
 
+pub mod charmap;
 pub mod code;
 pub mod decompile;
 pub mod expr;
@@ -53,6 +54,7 @@ pub enum Game {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Enc {
 	Sjis,
+	Gbk,
 	Utf8,
 }
 
@@ -152,6 +154,10 @@ pub fn compile(scena: &Scena) -> rootcause::Result<Scena> {
 }
 
 pub fn read(game: Game, enc: Enc, bytes: &[u8]) -> rootcause::Result<Scena> {
+	read_with_charmap(game, enc, bytes, &charmap::Charmap::default())
+}
+
+pub fn read_with_charmap(game: Game, enc: Enc, bytes: &[u8], charmap: &charmap::Charmap) -> rootcause::Result<Scena> {
 	let mut f = Reader::new(bytes);
 	f.check_u32(0x20)?;
 	let name_start = f.u32()? as usize;
@@ -213,6 +219,7 @@ pub fn read(game: Game, enc: Enc, bytes: &[u8]) -> rootcause::Result<Scena> {
 	let mut f = CReader {
 		game,
 		enc,
+		charmap,
 		scena: &name,
 		variant,
 		outline_start: f.len(),
@@ -252,6 +259,10 @@ pub fn read(game: Game, enc: Enc, bytes: &[u8]) -> rootcause::Result<Scena> {
 }
 
 pub fn write(scena: &Scena) -> rootcause::Result<Vec<u8>> {
+	write_with_charmap(scena, &charmap::Charmap::default())
+}
+
+pub fn write_with_charmap(scena: &Scena, charmap: &charmap::Charmap) -> rootcause::Result<Vec<u8>> {
 	let start = Label::new();
 
 	let mut errors = rootcause::report_collection::ReportCollection::new();
@@ -270,6 +281,7 @@ pub fn write(scena: &Scena) -> rootcause::Result<Vec<u8>> {
 		start,
 		game: scena.info.game,
 		enc: scena.info.enc,
+		charmap,
 		variant: scena.info.variant,
 	};
 
@@ -336,7 +348,7 @@ pub fn write(scena: &Scena) -> rootcause::Result<Vec<u8>> {
 	let old_cs1 = scena.info.game == Game::Cs1 && (1..100).contains(&scena.info.variant);
 	if !old_cs1 {
 		f.place(name_start);
-		f.str(scena.info.enc, &scena.info.name)?;
+		f.str(scena.info.enc, charmap, &scena.info.name)?;
 	}
 
 	match (scena.info.game, scena.info.oddness) {
@@ -366,13 +378,13 @@ pub fn write(scena: &Scena) -> rootcause::Result<Vec<u8>> {
 		}
 		for (c, l) in chunks.iter().zip(name_pos) {
 			f.place(l);
-			f.str(scena.info.enc, &c.2)?;
+			f.str(scena.info.enc, charmap, &c.2)?;
 		}
 	}
 
 	if old_cs1 {
 		f.place(name_start);
-		f.str(scena.info.enc, &scena.info.name)?;
+		f.str(scena.info.enc, charmap, &scena.info.name)?;
 	}
 	f.place(asm_end);
 

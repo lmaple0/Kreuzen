@@ -11,7 +11,7 @@ pub(crate) fn read(f: &mut CReader) -> rootcause::Result<StyleName> {
 
 pub(crate) fn write(d: &OData, s: &StyleName) -> rootcause::Result<Writer> {
 	let mut f = Writer::new();
-	f.sstr(64, d.enc, &s.0)?;
-	f.sstr(64, d.enc, &s.1)?;
+	f.sstr(64, d.enc, d.charmap, &s.0)?;
+	f.sstr(64, d.enc, d.charmap, &s.1)?;
 	Ok(f)
 }

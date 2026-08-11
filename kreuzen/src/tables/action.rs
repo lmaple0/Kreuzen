@@ -58,7 +58,7 @@ fn read_cs1(f: &mut CReader) -> rootcause::Result<Vec<Action>> {
 	let n = f.u8()? as usize;
 	let namelen = match f.enc {
 		Enc::Sjis => 32,
-		Enc::Utf8 => 48,
+		Enc::Utf8 | Enc::Gbk => 48,
 	};
 
 	let mut out = Vec::with_capacity(n);
@@ -167,7 +167,7 @@ fn write_cs1(d: &OData, table: &[Action]) -> rootcause::Result<Writer> {
 	let mut f = Writer::new();
 	let namelen = match d.enc {
 		Enc::Sjis => 32,
-		Enc::Utf8 => 48,
+		Enc::Utf8 | Enc::Gbk => 48,
 	};
 	let n = u8::try_from(table.len()).map_err(|_| rootcause::report!("ActionTable too large: {}", table.len()))?;
 	f.u8(n);
@@ -209,9 +209,9 @@ fn write_cs1(d: &OData, table: &[Action]) -> rootcause::Result<Writer> {
 		w(e1.3)?;
 		w(a.cp_cost)?;
 
-		f.sstr(16, d.enc, &a.flags)?;
-		f.sstr(32, d.enc, &a.ani)?;
-		f.sstr(namelen, d.enc, &a.name)?;
+		f.sstr(16, d.enc, d.charmap, &a.flags)?;
+		f.sstr(32, d.enc, d.charmap, &a.ani)?;
+		f.sstr(namelen, d.enc, d.charmap, &a.name)?;
 	}
 	Ok(f)
 }
@@ -257,8 +257,8 @@ fn write_cs3_action(f: &mut Writer, d: &OData, a: &Action) -> rootcause::Result<
 	}
 
 	f.u32(a.cp_cost);
-	f.sstr(16, d.enc, &a.flags)?;
-	f.sstr(32, d.enc, &a.ani)?;
-	f.sstr(64, d.enc, &a.name)?;
+	f.sstr(16, d.enc, d.charmap, &a.flags)?;
+	f.sstr(32, d.enc, d.charmap, &a.ani)?;
+	f.sstr(64, d.enc, d.charmap, &a.name)?;
 	Ok(())
 }

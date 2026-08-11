@@ -108,7 +108,7 @@ pub(crate) fn read(f: &mut CReader) -> rootcause::Result<Btlset> {
 
 pub(crate) fn write(d: &OData, b: &Btlset) -> rootcause::Result<Writer> {
 	let mut f = Writer::new();
-	f.sstr(16, d.enc, &b.field)?;
+	f.sstr(16, d.enc, d.charmap, &b.field)?;
 	if d.game >= Game::Cs3 {
 		for &v in &b.bounds {
 			f.f32(v);
@@ -130,7 +130,7 @@ pub(crate) fn write(d: &OData, b: &Btlset) -> rootcause::Result<Writer> {
 		Game::Cs3 | Game::Cs4 => 16,
 		_ => 0,
 	};
-	f.sstr(slen, d.enc, &b.script)?;
+	f.sstr(slen, d.enc, d.charmap, &b.script)?;
 
 	for v in &b.variants {
 		if v.id.0 >= 1_000_000_000 {
@@ -138,10 +138,10 @@ pub(crate) fn write(d: &OData, b: &Btlset) -> rootcause::Result<Writer> {
 			f.u32(0xFFFFFFFE);
 			f.u32(v.id.0 - 1_000_000_000);
 			for (name, _) in &v.monsters {
-				f.sstr(16, d.enc, name)?;
+				f.sstr(16, d.enc, d.charmap, name)?;
 			}
 			for _ in v.monsters.len()..4 {
-				f.sstr(16, d.enc, "")?;
+				f.sstr(16, d.enc, d.charmap, "")?;
 			}
 			for (_, prob) in &v.monsters {
 				f.u16(*prob as u16);
@@ -153,10 +153,10 @@ pub(crate) fn write(d: &OData, b: &Btlset) -> rootcause::Result<Writer> {
 			crate::ensure!(v.monsters.len() <= 8, "btlset variant has more than 8 monsters: {v:?}");
 			f.u32(v.id.0);
 			for (name, _) in &v.monsters {
-				f.sstr(16, d.enc, name)?;
+				f.sstr(16, d.enc, d.charmap, name)?;
 			}
 			for _ in v.monsters.len()..8 {
-				f.sstr(16, d.enc, "")?;
+				f.sstr(16, d.enc, d.charmap, "")?;
 			}
 			for (_, prob) in &v.monsters {
 				f.u8(*prob);

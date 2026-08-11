@@ -76,7 +76,12 @@ fn parse_header_inner(p: &mut Parser) -> Result<ScenaInfo> {
 	p.keyword("scena")?;
 	let name = p.parse()?;
 
-	let enc = p.alt().test_kw("sjis", |_| Ok(Enc::Sjis)).test(|_| Ok(Enc::Utf8)).finish()?;
+	let enc = p
+		.alt()
+		.test_kw("sjis", |_| Ok(Enc::Sjis))
+		.test_kw("gbk", |_| Ok(Enc::Gbk))
+		.test(|_| Ok(Enc::Utf8))
+		.finish()?;
 	let game = p.parse()?;
 	let variant = if p.glued_punct('/').is_ok() { p.parse()? } else { 0 };
 	let oddness = p.parse().unwrap_or(0);
@@ -91,11 +96,7 @@ fn parse_header_inner(p: &mut Parser) -> Result<ScenaInfo> {
 /// get it from `kreuzen::spec::for_game`.
 pub fn parse_scena(info: ScenaInfo, rest: Rest<'_>, spec: &'static Spec, errors: &mut Errors) -> Scena {
 	let mut p = Parser::new(rest.cursor, errors);
-	let ctx = PCtx {
-		spec,
-		can_break: false,
-		can_cont: false,
-	};
+	let ctx = PCtx { spec, can_break: false, can_cont: false };
 	let mut chunks = Vec::new();
 	while !p.at_end() {
 		parse_item(&mut p, &mut chunks, |p| crate::scena::parse_chunk(p, &ctx));
@@ -113,4 +114,18 @@ pub fn parse(src: &str, spec: impl FnOnce(&ScenaInfo) -> &'static Spec, errors: 
 	let (info, rest) = parse_header(&tokens, errors)?;
 	let spec = spec(&info);
 	Some(parse_scena(info, rest, spec, errors))
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn parses_gbk_header() {
+		let mut errors = Errors::new();
+		let tokens = crate::lex::lex("scena \"test\" gbk cs1;", &mut errors);
+		let (info, _) = parse_header(&tokens, &mut errors).unwrap();
+		assert_eq!(info.enc, Enc::Gbk);
+		assert!(errors.is_empty());
+	}
 }

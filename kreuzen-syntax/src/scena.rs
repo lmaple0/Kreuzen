@@ -12,6 +12,7 @@ impl Print for ScenaInfo {
 		self.name.print(ctx);
 		match self.enc {
 			kreuzen::Enc::Sjis => ctx.word("sjis"),
+			kreuzen::Enc::Gbk => ctx.word("gbk"),
 			kreuzen::Enc::Utf8 => {}
 		}
 		self.game.print(ctx);

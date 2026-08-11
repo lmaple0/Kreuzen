@@ -35,6 +35,7 @@ impl From<GameArg> for Game {
 enum EncArg {
 	Utf8,
 	Sjis,
+	Gbk,
 }
 
 impl From<EncArg> for Enc {
@@ -42,6 +43,7 @@ impl From<EncArg> for Enc {
 		match e {
 			EncArg::Utf8 => Enc::Utf8,
 			EncArg::Sjis => Enc::Sjis,
+			EncArg::Gbk => Enc::Gbk,
 		}
 	}
 }
@@ -61,6 +63,8 @@ struct Args {
 	game: Option<GameArg>,
 	#[clap(long, help = "Script text encoding")]
 	enc: Option<EncArg>,
+	#[clap(long, value_name = "FILE", help = "Custom HEX=TEXT character map")]
+	charmap: Option<PathBuf>,
 	#[clap(long, default_value = "sugar", help = "Decompile depth")]
 	mode: DecompileMode,
 
@@ -249,9 +253,10 @@ fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Res
 		return Ok(false);
 	};
 	let enc = args.enc.map(Enc::from).unwrap_or_else(|| detect_enc(game, infile));
+	let charmap = load_charmap(args)?;
 
 	let bytes = std::fs::read(infile).context_with(|| format!("failed to read file: {}", infile.display()))?;
-	let scena = kreuzen::read(game, enc, &bytes).context("failed to read scena")?;
+	let scena = kreuzen::read_with_charmap(game, enc, &bytes, &charmap).context("failed to read scena")?;
 	let scena = match args.mode {
 		DecompileMode::Flat => scena,
 		DecompileMode::Tree => kreuzen::decompile(&scena)?,
@@ -263,7 +268,7 @@ fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Res
 	Ok(true)
 }
 
-fn compile_inner(_args: &Args, infile: &Path, outfile: &Path) -> rootcause::Result<bool> {
+fn compile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Result<bool> {
 	let source = std::fs::read_to_string(infile).context_with(|| format!("failed to read file: {}", infile.display()))?;
 
 	let mut errors = diag::Errors::new();
@@ -280,7 +285,8 @@ fn compile_inner(_args: &Args, infile: &Path, outfile: &Path) -> rootcause::Resu
 
 	let scena = kreuzen::sugar::desugar(&scena)?;
 	let scena = kreuzen::compile(&scena)?;
-	let data = kreuzen::write(&scena).context("failed to write scena")?;
+	let charmap = load_charmap(args)?;
+	let data = kreuzen::write_with_charmap(&scena, &charmap).context("failed to write scena")?;
 	write_file(outfile, &data)?;
 	Ok(true)
 }
@@ -341,6 +347,14 @@ fn parents(path: &Path) -> impl Iterator<Item = &str> {
 		.into_iter()
 		.flat_map(|p| p.components())
 		.filter_map(|c| c.as_os_str().to_str())
+}
+
+fn load_charmap(args: &Args) -> rootcause::Result<kreuzen::charmap::Charmap> {
+	let Some(path) = &args.charmap else {
+		return Ok(kreuzen::charmap::Charmap::default());
+	};
+	let source = std::fs::read_to_string(path).context_with(|| format!("failed to read charmap: {}", path.display()))?;
+	source.parse().map_err(|e| rootcause::report!("invalid charmap {}: {e}", path.display()))
 }
 
 fn write_file(outfile: &Path, data: &[u8]) -> rootcause::Result<()> {

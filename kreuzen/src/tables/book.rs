@@ -59,15 +59,15 @@ pub(crate) fn write(d: &OData, book: &BookData) -> rootcause::Result<Writer> {
 		BookData::TitlePage(title, text) => {
 			f.u16(1);
 			f.u16(0);
-			f.sstr(16, d.enc, &title.title)?;
+			f.sstr(16, d.enc, d.charmap, &title.title)?;
 			for &v in &title.data {
 				f.u16(v);
 			}
-			f.str(d.enc, text)?;
+			f.str(d.enc, d.charmap, text)?;
 		}
 		BookData::Page(text) => {
 			f.u16(0);
-			f.str(d.enc, text)?;
+			f.str(d.enc, d.charmap, text)?;
 		}
 		BookData::Empty => {
 			f.u16(0);

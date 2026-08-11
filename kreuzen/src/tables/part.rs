@@ -33,8 +33,8 @@ fn read_part(f: &mut CReader) -> rootcause::Result<Part> {
 
 fn write_part(f: &mut Writer, d: &OData, p: &Part) -> rootcause::Result<()> {
 	f.u32(p.id);
-	f.sstr(32, d.enc, &p.a)?;
-	f.sstr(32, d.enc, &p.b)?;
+	f.sstr(32, d.enc, d.charmap, &p.a)?;
+	f.sstr(32, d.enc, d.charmap, &p.b)?;
 	Ok(())
 }
 

@@ -8,6 +8,6 @@ pub(crate) fn read(f: &mut CReader) -> rootcause::Result<String> {
 
 pub(crate) fn write(d: &OData, s: &str) -> rootcause::Result<Writer> {
 	let mut f = Writer::new();
-	f.str(d.enc, s)?;
+	f.str(d.enc, d.charmap, s)?;
 	Ok(f)
 }
