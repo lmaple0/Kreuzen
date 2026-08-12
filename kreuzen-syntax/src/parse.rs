@@ -37,10 +37,37 @@ pub(crate) fn parse_item<T>(p: &mut Parser, out: &mut Vec<T>, f: impl FnOnce(&mu
 			out.push(v);
 			p.cursor.prev_punct('}') || p.punct(';').is_ok()
 		}
-		Err(_) => false,
+		// A failed item that ends on a `}` has recovered into its own block and
+		// reported the error itself; see [`header_block`].
+		Err(_) => p.cursor.prev_punct('}'),
 	};
-	if !ok {
+	if ok {
+		// Whatever the item was still expecting is stale now.
+		p.expect.clear();
+	} else {
 		p.report(recover);
+	}
+}
+
+/// Parses a construct made of a header and a `{...}` block, such as `if`, `while` or `fn`.
+///
+/// If the header fails, the error is reported and the block is parsed anyway,
+/// allowing the parser to collect errors inside, and followup blocks like `else`
+/// and `shadow` can still be parsed afterwards.
+pub(crate) fn header_block<H, B>(
+	p: &mut Parser,
+	header: impl FnOnce(&mut Parser) -> Result<H>,
+	block: impl FnOnce(&mut Parser) -> Result<B>,
+) -> Result<(H, B)> {
+	match header(p) {
+		Ok(h) => Ok((h, block(p)?)),
+		Err(e) => {
+			p.report(skip_to_block);
+			if p.cursor.clone().delim('{').is_ok() {
+				let _ = block(p);
+			}
+			Err(e)
+		}
 	}
 }
 
@@ -50,6 +77,14 @@ pub(crate) fn recover(c: &mut Cursor) {
 		if c.punct(';').is_ok() || c.delim('{').is_ok() {
 			break;
 		}
+		c.skip_any();
+	}
+}
+
+/// Skips to the `{` of a block whose header failed, stopping short of a `;`,
+/// which would mean the construct has no block after all.
+fn skip_to_block(c: &mut Cursor) {
+	while !c.at_end() && c.clone().punct(';').is_err() && c.clone().delim('{').is_err() {
 		c.skip_any();
 	}
 }

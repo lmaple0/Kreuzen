@@ -5,7 +5,7 @@ use kreuzen::expr::Expr;
 use crate::code::expr;
 use crate::{Parse, Print, Printer};
 
-use crate::parse::TryParser;
+use crate::parse::{TryParser, header_block};
 use crate::{Error, Expect, PCtx, Parser, Result};
 
 /// A `{ ... }` block of statements.
@@ -137,10 +137,12 @@ fn parse_stmt(p: &mut Parser, ctx: &PCtx) -> Result<Stmt> {
 			Ok(Stmt::Continue(meta))
 		})
 		.test_kw("ForkLambda", |p| {
-			let chr = p.parse()?;
-			let slot = p.int()?;
-			let name = p.parse()?;
-			let body = block(p, &PCtx { can_break: false, can_cont: false, ..*ctx })?;
+			let inner = &PCtx { can_break: false, can_cont: false, ..*ctx };
+			let ((chr, slot, name), body) = header_block(
+				p,
+				|p| Ok((p.parse()?, p.int()?, p.parse()?)),
+				|p| block(p, inner),
+			)?;
 			Ok(Stmt::ForkLambda(meta, chr, slot, name, body))
 		})
 		.test(|p| parse_assignment(p, ctx, meta))
@@ -149,40 +151,47 @@ fn parse_stmt(p: &mut Parser, ctx: &PCtx) -> Result<Stmt> {
 }
 
 fn parse_if(p: &mut Parser, ctx: &PCtx, meta: OpMeta) -> Result<Stmt> {
-	let e = expr::parse(p, ctx)?;
-	let then = block(p, ctx)?;
+	let head = header_block(p, |p| expr::parse(p, ctx), |p| block(p, ctx));
+	// The else clause is parsed even if the header failed, so that a stray
+	// `else` is not left behind to be parsed as a statement of its own.
+	let els = parse_else(p, ctx);
+	let (e, then) = head?;
+	Ok(Stmt::If(meta, e, then, els?))
+}
 
+fn parse_else(p: &mut Parser, ctx: &PCtx) -> Result<Option<(OpMeta, Vec<Stmt>)>> {
 	let els = p.test(Expect::Str("else"), |p| {
-		let meta2 = p.meta().unwrap_or_default();
+		let meta = p.meta().unwrap_or_default();
 		p.cursor.keyword("else")?;
-		Ok(meta2)
+		Ok(meta)
 	});
-	let els = match els {
-		Ok(meta2) => {
-			let body = p
-				.alt()
-				.test(|p| block(p, ctx))
-				.test(|p| {
-					// `else if`
-					let stmt = parse_stmt(p, ctx)?;
-					if !matches!(stmt, Stmt::If(..)) {
-						return Err(Error);
-					}
-					Ok(vec![stmt])
-				})
-				.finish()?;
-			Some((meta2, body))
-		}
-		Err(_) => None,
+	let Ok(meta) = els else {
+		return Ok(None);
 	};
-	Ok(Stmt::If(meta, e, then, els))
+	let body = p
+		.alt()
+		.test(|p| block(p, ctx))
+		.test(|p| {
+			// `else if`
+			let stmt = parse_stmt(p, ctx)?;
+			if !matches!(stmt, Stmt::If(..)) {
+				return Err(Error);
+			}
+			Ok(vec![stmt])
+		})
+		.finish()?;
+	Ok(Some((meta, body)))
 }
 
 fn parse_while(p: &mut Parser, ctx: &PCtx, meta: OpMeta) -> Result<Stmt> {
-	let e = expr::parse(p, ctx)?;
-	let ctx = &PCtx { can_break: true, can_cont: true, ..*ctx };
-	// While has a trailing meta, so can't use super::parse_block
-	let (body, meta2) = p.delim('{', |p| {
+	let inner = &PCtx { can_break: true, can_cont: true, ..*ctx };
+	let (e, (body, meta2)) = header_block(p, |p| expr::parse(p, ctx), |p| while_body(p, inner))?;
+	Ok(Stmt::While(meta, e, body, meta2))
+}
+
+// While has a trailing meta, so can't use super::parse_block
+fn while_body(p: &mut Parser, ctx: &PCtx) -> Result<(Vec<Stmt>, OpMeta)> {
+	p.delim('{', |p| {
 		let mut body = Vec::new();
 		let mut meta2 = OpMeta::default();
 		while !p.at_end() {
@@ -197,14 +206,17 @@ fn parse_while(p: &mut Parser, ctx: &PCtx, meta: OpMeta) -> Result<Stmt> {
 			crate::parse::parse_item(p, &mut body, |p| parse_stmt(p, ctx));
 		}
 		Ok((body, meta2))
-	})?;
-	Ok(Stmt::While(meta, e, body, meta2))
+	})
 }
 
 fn parse_switch(p: &mut Parser, ctx: &PCtx, meta: OpMeta) -> Result<Stmt> {
-	let e = expr::parse(p, ctx)?;
-	let ctx = &PCtx { can_break: true, ..*ctx };
-	let cases = p.delim('{', |p| {
+	let inner = &PCtx { can_break: true, ..*ctx };
+	let (e, cases) = header_block(p, |p| expr::parse(p, ctx), |p| switch_body(p, inner))?;
+	Ok(Stmt::Switch(meta, e, cases))
+}
+
+fn switch_body(p: &mut Parser, ctx: &PCtx) -> Result<Vec<(Case, Vec<Stmt>)>> {
+	p.delim('{', |p| {
 		let mut cases: Vec<(Case, Vec<Stmt>)> = Vec::new();
 		while !p.at_end() {
 			if let Ok(case) = p.parse() {
@@ -217,8 +229,7 @@ fn parse_switch(p: &mut Parser, ctx: &PCtx, meta: OpMeta) -> Result<Stmt> {
 			crate::parse::parse_item(p, &mut cases.last_mut().unwrap().1, |p| parse_stmt(p, ctx));
 		}
 		Ok(cases)
-	})?;
-	Ok(Stmt::Switch(meta, e, cases))
+	})
 }
 
 // Setter ops print as `lhs = expr;`; reconstruct the op.

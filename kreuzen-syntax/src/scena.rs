@@ -3,7 +3,7 @@ use kreuzen::code::preload::Preload;
 use kreuzen::code::shadow::{Shadow, ShadowOp};
 use kreuzen::{Body, Chunk, Function, Game, Scena, ScenaInfo};
 
-use crate::parse::{Expect, PCtx};
+use crate::parse::{Expect, PCtx, header_block};
 use crate::{Error, Parse, Parser, Print, Printer, Result};
 
 impl Print for ScenaInfo {
@@ -66,8 +66,7 @@ impl Print for Function {
 }
 
 pub fn parse_function(ctx: &PCtx, p: &mut Parser) -> Result<Function, Error> {
-	let name = p.parse()?;
-	let body = Body::Tree(crate::code::block(p, ctx)?);
+	let head = header_block(p, |p| p.parse(), |p| crate::code::block(p, ctx));
 	let mut preload = Vec::new();
 	if p.keyword("preload").is_ok() {
 		preload = p.parse()?;
@@ -76,7 +75,8 @@ pub fn parse_function(ctx: &PCtx, p: &mut Parser) -> Result<Function, Error> {
 	while p.keyword("shadow").is_ok() {
 		shadow.push(p.parse()?);
 	}
-	Ok(Function { name, body, preload, shadow })
+	let (name, body) = head?;
+	Ok(Function { name, body: Body::Tree(body), preload, shadow })
 }
 
 impl Print for Chunk {
