@@ -1,12 +1,9 @@
 # Sky / Crossbell 支持实施计划
 
-状态：P0 本地实现与 smoke test 已完成，尚未推送  
-工作分支：`sky-crossbell-support`  
-基线：Kreuzen `v1.1.1` + 本分支现有 GBK/charmap 提交 `4f26133`
+状态：P0、P1 已完成；P2 的 SC / the 3rd 静态 corpus 验收已完成，FC 保持 experimental
 
-分支治理：原上游 `origin/main` 作为 legacy 参考线；本 fork 之前推送的
-`agent/add-gbk-charmap` 是新维护线的历史起点；当前分支完成验证并整理提交后，
-将作为 fork 默认 `main` 的来源。
+工作分支：`main`
+分支治理：fork 的新维护线为默认 `main`；原上游历史保存在 `legacy`
 
 ## 1. 目标与边界
 
@@ -126,6 +123,12 @@ Evo 和旧 PC Zero/Ao 不再作为 P1 验收条件；相关 profile 仅保留实
 
 ### P2：Sky PC 主线
 
+状态（2026-08-12）：本机汉化版 SC 的 709 个文件与 the 3rd 的 368 个文件
+均完成反编译、重编译和二次反编译稳定性验证，解析/编译/二次解析错误均为 0。
+SC 有 472 个字节一致、237 个规范化差异，但 709 个文件的源码均在第二轮稳定；
+the 3rd 为 368 个全部字节一致。FC 因当前没有合法样本，继续标记 experimental，
+不把 SC/3rd 的结果外推为 FC 已完成。详见 `p2-validation.zh-CN.md`。
+
 优先顺序：`Sky SC` → `Sky the 3rd` → `Sky FC`。
 
 - 接通 ED6 `._sn` 场景格式；
@@ -167,9 +170,9 @@ Evo 和旧 PC Zero/Ao 不再作为 P1 验收条件；相关 profile 仅保留实
 
 静态解析、哈希往返和游戏内验证分别报告，不能互相替代。
 
-## 8. 首轮实施清单
+## 8. 首轮实施清单（已完成）
 
-下一轮从 P0 开始，按以下顺序执行：
+P0 已按以下顺序完成：
 
 1. 给 CLI 抽出游戏 profile/后端路由，不改变现有行为；
 2. 加入 `kreuzen-legacy` 空壳和 path dependency 原型；
@@ -180,8 +183,8 @@ Evo 和旧 PC Zero/Ao 不再作为 P1 验收条件；相关 profile 仅保留实
 
 ## 9. Git 与发布约束
 
-- 本地开发分支固定为 `sky-crossbell-support`；
-- 原远端 `agent/add-gbk-charmap` 暂时保留，不在未确认时删除；
+- 日常开发与发布来源固定为 `main`；原上游历史保留在 `legacy`；
+- 不再创建 `agent/*` 或旧的临时开发分支；
 - P0/P1 未完成前不创建 Release；
 - 推送前先整理提交，使 GBK/charmap、legacy adapter、Crossbell、Sky 各自可审查和回退；
 - 不再以原上游合并为完成条件，fork 的构建、文档和测试必须能够独立成立。

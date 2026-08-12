@@ -45,8 +45,9 @@ if (Test-Path -LiteralPath $outputRoot) {
 }
 
 $sourceRoot = Join-Path $outputRoot 'source'
+$secondSourceRoot = Join-Path $outputRoot 'source-second'
 $roundtripRoot = Join-Path $outputRoot 'roundtrip'
-New-Item -ItemType Directory -Force -Path $sourceRoot, $roundtripRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $sourceRoot, $secondSourceRoot, $roundtripRoot | Out-Null
 
 function Format-ReportMessage([string]$Message) {
     if ($Message.Length -le 4000) {
@@ -80,6 +81,8 @@ $rows = foreach ($file in $files) {
             Result = 'decompile_error'
             OriginalSha256 = $null
             RoundtripSha256 = $null
+            SourceStable = $null
+            SecondDecompileError = $false
             Message = Format-ReportMessage $decompileLog
         }
         continue
@@ -92,6 +95,8 @@ $rows = foreach ($file in $files) {
             Result = 'compile_error'
             OriginalSha256 = $null
             RoundtripSha256 = $null
+            SourceStable = $null
+            SecondDecompileError = $false
             Message = Format-ReportMessage $compileLog
         }
         continue
@@ -99,12 +104,32 @@ $rows = foreach ($file in $files) {
 
     $originalHash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
     $roundtripHash = (Get-FileHash -LiteralPath $roundtrip -Algorithm SHA256).Hash
+    $exact = $originalHash -eq $roundtripHash
+    $sourceStable = $true
+    $secondDecompileError = $false
+    $message = $compileLog
+    if (-not $exact) {
+        $secondClm = Join-Path $secondSourceRoot $relativeClm
+        New-Item -ItemType Directory -Force -Path ([System.IO.Path]::GetDirectoryName($secondClm)) | Out-Null
+        $secondLog = (& $exe @common --output $secondClm $roundtrip 2>&1 | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) {
+            $sourceStable = $false
+            $secondDecompileError = $true
+            $message = $secondLog
+        } else {
+            $firstSourceHash = (Get-FileHash -LiteralPath $clm -Algorithm SHA256).Hash
+            $secondSourceHash = (Get-FileHash -LiteralPath $secondClm -Algorithm SHA256).Hash
+            $sourceStable = $firstSourceHash -eq $secondSourceHash
+        }
+    }
     [pscustomobject]@{
         File = $relative
-        Result = if ($originalHash -eq $roundtripHash) { 'exact' } else { 'different' }
+        Result = if ($exact) { 'exact' } else { 'different' }
         OriginalSha256 = $originalHash
         RoundtripSha256 = $roundtripHash
-        Message = Format-ReportMessage $compileLog
+        SourceStable = $sourceStable
+        SecondDecompileError = $secondDecompileError
+        Message = Format-ReportMessage $message
     }
 }
 
@@ -119,6 +144,9 @@ $summary = [ordered]@{
     Different = @($rows | Where-Object Result -eq 'different').Count
     DecompileErrors = @($rows | Where-Object Result -eq 'decompile_error').Count
     CompileErrors = @($rows | Where-Object Result -eq 'compile_error').Count
+    SourceStable = @($rows | Where-Object SourceStable -eq $true).Count
+    SourceUnstable = @($rows | Where-Object SourceStable -eq $false).Count
+    SecondDecompileErrors = @($rows | Where-Object SecondDecompileError -eq $true).Count
     GeneratedAt = (Get-Date).ToString('o')
 }
 

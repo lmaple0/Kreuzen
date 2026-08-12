@@ -1,7 +1,17 @@
 # Kreuzen
 
 A decompiler for *Trails of Cold Steel I-IV*, *Trails into Reverie*, and *Tokyo Xanadu eX+*.
-It can roundtrip most scripts bytewise, with the remainder being things that are either inconsequential or broken in the original scripts.
+This maintained fork also provides an explicit legacy backend for the PC releases of the
+Crossbell games and *Trails in the Sky*.
+
+Verified local corpus coverage currently includes *Trails from Zero*, *Trails to Azure*,
+*Trails in the Sky SC*, and *Trails in the Sky the 3rd*. The *Sky FC* profile is
+experimental until a legal FC corpus is available for validation. Static roundtrip coverage
+does not imply in-game runtime validation; see the reports under [`docs`](docs/).
+
+Kreuzen can roundtrip most modern scripts bytewise, with the remainder being things that are
+either inconsequential or broken in the original scripts. Legacy corpus reports separately
+record byte differences and second-decompile source stability.
 
 <details><summary>Non-roundtripping scripts</summary>
 
@@ -18,8 +28,12 @@ It can roundtrip most scripts bytewise, with the remainder being things that are
 
 ## Usage
 
-For basic usage, drag either a .dat or .krz file, or a folder containing such, onto the executable. Outputs will be placed next to the input. For commandline usage, read `--help`.
+For basic usage, drag a supported script or source file, or a folder containing such, onto the executable. Modern games use `.dat` and `.krz`; the Sky/Crossbell backend uses `._SN`/`.bin` and `.clm`. Outputs will be placed next to the input. For commandline usage, read `--help`.
 Kruzen will attempt to guess the game based on the containing folder name, but you can override this detection with either `--game cs1` or by renaming the executable itself to `kreuzen-cs1.exe`.
+
+Legacy games require an explicit game profile when the install path is not recognizable. Use
+`--legacy-layout native` or `--legacy-layout themelios` for ED7 layouts; Kreuzen does not
+silently retry another layout after a parse failure.
 
 ### Text encodings and charmaps
 
