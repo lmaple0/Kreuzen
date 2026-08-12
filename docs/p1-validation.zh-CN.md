@@ -12,6 +12,9 @@
   `CALMARE_RAW_BYTES` 改变整个进程；该环境变量只在 Aureole 中保留为旧调用方的
   兼容回退，Kreuzen 不使用它；
 - CLI 支持 legacy 单文件和目录双向处理；`--enc utf8` 对 ED6/ED7 明确报错；
+- ED7 布局由 `--legacy-layout native|themelios` 显式指定，不自动探测，也不在
+  解析失败后切换布局；`native` 对应 NISA/原 MOD 的原生 Zero/Azure 文件，
+  `themelios` 对应现有 Themélios/Calmare 及相关旧汉化工具生成的文件；
 - `tools/Test-LegacyCorpus.ps1` 生成逐文件 CSV 与 JSON 报告，分别统计
   `exact`、`different`、`decompile_error`、`compile_error`。
 
@@ -19,7 +22,7 @@
 
 - Aureole `cp932`：3 项通过（GBK + charmap 往返、panic 后作用域恢复、
   跨字符边界的映射碰撞拒绝）；
-- Kreuzen workspace：37 项通过（33 library、1 CLI、2 legacy、1 syntax）；
+- Kreuzen workspace：38 项通过（33 library、1 CLI、3 legacy、1 syntax）；
 - legacy 目录 smoke test：`.bin → .clm → .bin` 成功且 SHA-256 一致。
 
 ## 简体中文完整语料
@@ -39,26 +42,30 @@ SHA-256 完全一致。报告保存在本地 `target/p1-corpus-*-cn`，不进入
 
 | Profile | 文件总数 | 字节一致 | 差异 | 反编译失败 | 重编译失败 |
 |---|---:|---:|---:|---:|---:|
-| `zero-kai` | 338 | 334 | 0 | 4 | 0 |
-| `azure-kai` | 384 | 329 | 8 | 47 | 0 |
+| `zero-kai` (`native`) | 338 | 214 | 124 | 0 | 0 |
+| `azure-kai` (`native`) | 384 | 329 | 55 | 0 | 0 |
 
-Zero 的 4 个失败项为 `r0000.bin`、`r1000.bin`、`r1500.bin`、`r2050.bin`，
-均是越界读取。Azure 的失败项主要报 `incorrect sepith table size`，另有 8 个
-文件能往返但字节不同。所有文件名、SHA-256 和错误信息已写入本地结构化报告，
-没有静默跳过。
+Zero 原仓库工具以 7 字节 sepith 行成功读取 338/338 个 NISA 场景，证明这不是
+Inevitable Zero 构建器私造的布局。Kreuzen 改为在 `native` 模式下按指针读取
+Zero 战斗子表，不再把函数与字符串表之间的整个区域猜作连续 sepith 表。
+Azure 的字符串表前 0～7 字节零填充也已显式校验和接受。两套语料均实现
+338/338、384/384 结构往返；字节差异项属于当前写入器的布局归一化，未冒充
+字节一致。所有文件名、SHA-256 和结果均写入本地结构化报告。
 
 这两个安装目录的纯净度尚未得到独立证明，因此这些异常只能作为后续调查清单，
 不能直接归因于原版 NISA 数据或 Kreuzen。需要用 Steam 校验后的独立副本复测。
 
 ## MOD 专项现状
 
-- Azure Vitality 仓库现有 35 个中文 `.clm` 来自旧
-  `CALMARE_RAW_BYTES=1` 流程，不能直接当作新的 Unicode + GBK `.clm` 输入；
-  需要一次明确的迁移，不能静默套用；
-- Inevitable Zero 的 39 个中文合并稿是 Python 脚本格式，不是 `.clm`，需要从其
-  构建输出或合并器边界接入专项回归；
-- Evo、旧 PC Zero/Ao 尚无本轮可确认的独立干净样本；
+- Azure Vitality 的 35 个中文 `.clm` 已通过显式 GBK + Themélios 布局编译。
+  Kreuzen legacy 入口明确支持 CRLF；`c0200.clm` 的损坏 `Fork flat` 已恢复成
+  等价的结构化无限循环，Themélios 同时补上指向函数末尾的标签定义；最终
+  35/35 字节往返一致；
+- Inevitable Zero 的 39 个中文合并稿已可直接重建为原生 GBK 场景；使用
+  `--legacy-layout native` 验证为 36 个字节一致、3 个布局归一化差异、0 个
+  反编译或重编译失败；
 - 尚未进行游戏内加载、任务流程、分支、DP、奖励和贴图验证。
 
-因此本轮完成了 P1 的核心工具链与中文主语料无损往返，但 P1 仍保持进行中，
-直到上述样本和 MOD 专项清单完成。
+因此 P1 的核心工具链、中文主语料和两个 MOD 专项结构回归均已完成。尚未进行的
+游戏内任务流程验证属于候选包验证，不以静态往返代替。Evo 与旧 PC Zero/Ao
+已按项目需求移出 P1 验收范围，现有 profile 仅保留实验性路由，不要求补充样本。

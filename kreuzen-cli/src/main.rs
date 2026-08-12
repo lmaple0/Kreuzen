@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use kreuzen::{Enc, Game};
-use kreuzen_legacy::{Encoding as LegacyEncoding, Game as LegacyGame, TextCodec};
+use kreuzen_legacy::{Encoding as LegacyEncoding, Game as LegacyGame, Layout as LegacyLayout, TextCodec};
 use kreuzen_syntax::{Print as _, diag};
 use rootcause::prelude::ResultExt as _;
 use tracing_subscriber::prelude::*;
@@ -89,21 +89,27 @@ enum EncArg {
 	Gbk,
 }
 
-impl From<EncArg> for Enc {
-	fn from(e: EncArg) -> Self {
-		match e {
-			EncArg::Utf8 => Enc::Utf8,
-			EncArg::Sjis => Enc::Sjis,
-			EncArg::Gbk => Enc::Gbk,
-		}
-	}
-}
-
 #[derive(clap::ValueEnum, Clone, Copy)]
 enum DecompileMode {
 	Flat,
 	Tree,
 	Sugar,
+}
+
+#[derive(clap::ValueEnum, Clone, Copy, Default)]
+enum LegacyLayoutArg {
+	Native,
+	#[default]
+	Themelios,
+}
+
+impl From<LegacyLayoutArg> for LegacyLayout {
+	fn from(layout: LegacyLayoutArg) -> Self {
+		match layout {
+			LegacyLayoutArg::Native => Self::Native,
+			LegacyLayoutArg::Themelios => Self::Themelios,
+		}
+	}
 }
 
 #[derive(clap::Parser)]
@@ -118,7 +124,8 @@ struct Args {
 	charmap: Option<PathBuf>,
 	#[clap(long, default_value = "sugar", help = "Decompile depth")]
 	mode: DecompileMode,
-
+	#[clap(long, default_value = "themelios", help = "ED7 binary layout; never auto-detected")]
+	legacy_layout: LegacyLayoutArg,
 	#[clap(long, short, help = "Output file")]
 	output: Option<PathBuf>,
 }
@@ -380,7 +387,8 @@ fn compile_legacy(args: &Args, infile: &Path, out: Option<&Path>) -> bool {
 fn compile_legacy_inner(args: &Args, infile: &Path, out: Option<&Path>) -> rootcause::Result<bool> {
 	let source = std::fs::read_to_string(infile).context_with(|| format!("failed to read file: {}", infile.display()))?;
 	let codec = legacy_codec(args)?;
-	let (game, bytes) = kreuzen_legacy::compile(&source, &codec).map_err(|error| rootcause::report!("{error}"))?;
+	let (game, bytes) = kreuzen_legacy::compile(&source, &codec, args.legacy_layout.into())
+		.map_err(|error| rootcause::report!("{error}"))?;
 	if let Some(expected) = args.game.map(GameProfile::from)
 		&& expected != GameProfile::Legacy(game)
 	{
@@ -404,7 +412,12 @@ fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Res
 	let bytes = std::fs::read(infile).context_with(|| format!("failed to read file: {}", infile.display()))?;
 	let str = match game {
 		GameProfile::Modern(game) => {
-			let enc = args.enc.map(Enc::from).unwrap_or_else(|| detect_enc(game, infile));
+			let enc = match args.enc {
+				Some(EncArg::Utf8) => Enc::Utf8,
+				Some(EncArg::Sjis) => Enc::Sjis,
+				Some(EncArg::Gbk) => Enc::Gbk,
+				None => detect_enc(game, infile),
+			};
 			let charmap = load_charmap(args)?;
 			let scena = kreuzen::read_with_charmap(game, enc, &bytes, &charmap).context("failed to read scena")?;
 			let scena = match args.mode {
@@ -416,7 +429,8 @@ fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Res
 		}
 		GameProfile::Legacy(game) => {
 			let codec = legacy_codec(args)?;
-			kreuzen_legacy::decompile(game, &bytes, &codec).map_err(|error| rootcause::report!("{error}"))?
+			kreuzen_legacy::decompile(game, &bytes, &codec, args.legacy_layout.into())
+				.map_err(|error| rootcause::report!("{error}"))?
 		}
 	};
 	write_file(outfile, str.as_bytes())?;

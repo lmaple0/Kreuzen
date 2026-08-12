@@ -13,6 +13,22 @@ pub enum Encoding {
 	Gbk,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Layout {
+	Native,
+	#[default]
+	Themelios,
+}
+
+impl Layout {
+	fn aureole(self) -> ed7::Layout {
+		match self {
+			Self::Native => ed7::Layout::Native,
+			Self::Themelios => ed7::Layout::Themelios,
+		}
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct TextCodec(cp932::Codec);
 
@@ -137,17 +153,25 @@ pub enum Error {
 	Write { game: Game, message: String },
 }
 
-pub fn compile(source: &str, codec: &TextCodec) -> Result<(Game, Vec<u8>), Error> {
-	cp932::with_codec(&codec.0, || compile_inner(source))
+pub fn compile(source: &str, codec: &TextCodec, layout: Layout) -> Result<(Game, Vec<u8>), Error> {
+	let source = source.replace("\r\n", "\n");
+	cp932::with_codec(&codec.0, || compile_inner(&source, layout))
 }
 
-fn compile_inner(source: &str) -> Result<(Game, Vec<u8>), Error> {
+fn compile_inner(source: &str, layout: Layout) -> Result<(Game, Vec<u8>), Error> {
 	let (content, diagnostics) = calmare::parse(source, None);
 	let fatal = diagnostics.iter().filter(|diagnostic| diagnostic.is_fatal()).collect::<Vec<_>>();
 	if !fatal.is_empty() {
-		return Err(Error::Parse(
-			fatal.iter().map(|diagnostic| diagnostic.text.1.as_str()).collect::<Vec<_>>().join("; "),
-		));
+		let shown = fatal.iter().take(20).map(|diagnostic| {
+			let offset = diagnostic.text.0.start.min(source.len());
+			let prefix = &source[..offset];
+			let line = prefix.bytes().filter(|byte| *byte == b'\n').count() + 1;
+			let column = prefix.rsplit_once('\n').map_or(prefix.len(), |(_, tail)| tail.len()) + 1;
+			format!("{line}:{column}: {}", diagnostic.text.1)
+		}).collect::<Vec<_>>();
+		let omitted = fatal.len().saturating_sub(shown.len());
+		let suffix = (omitted != 0).then(|| format!("; ... {omitted} more error(s)"));
+		return Err(Error::Parse(shown.into_iter().chain(suffix).collect::<Vec<_>>().join("; ")));
 	}
 	let Some((aureole, content)) = content else {
 		return Err(Error::Parse("parser returned no content".to_owned()));
@@ -155,14 +179,14 @@ fn compile_inner(source: &str) -> Result<(Game, Vec<u8>), Error> {
 	let game = Game::from_aureole(aureole);
 	let bytes = match content {
 		Content::ED6Scena(scena) => ed6::Scena::write(aureole, &scena),
-		Content::ED7Scena(scena) => ed7::Scena::write(aureole, &scena),
+		Content::ED7Scena(scena) => ed7::Scena::write_with_layout(aureole, &scena, layout.aureole()),
 	}
 	.map_err(|error| Error::Write { game, message: error.to_string() })?;
 	Ok((game, bytes))
 }
 
 pub fn compile_cp932(source: &str) -> Result<(Game, Vec<u8>), Error> {
-	compile(source, &TextCodec::cp932())
+	compile(source, &TextCodec::cp932(), Layout::Themelios)
 }
 
 /// Decompile one ED6/ED7 scenario using the legacy CP932 codec.
@@ -170,7 +194,7 @@ pub fn compile_cp932(source: &str) -> Result<(Game, Vec<u8>), Error> {
 /// Explicit codec/charmap injection is introduced in P1. Keeping the codec
 /// restriction visible here prevents the old process-global raw-byte switch
 /// from becoming part of the new API.
-pub fn decompile(game: Game, bytes: &[u8], codec: &TextCodec) -> Result<String, Error> {
+pub fn decompile(game: Game, bytes: &[u8], codec: &TextCodec, layout: Layout) -> Result<String, Error> {
 	let aureole = game.aureole();
 	cp932::with_codec(&codec.0, || {
 		let content = match game.engine() {
@@ -178,7 +202,10 @@ pub fn decompile(game: Game, bytes: &[u8], codec: &TextCodec) -> Result<String, 
 				Content::ED6Scena(ed6::Scena::read(aureole, bytes).map_err(|error| Error::Read { game, message: error.to_string() })?)
 			}
 			EngineFamily::Ed7 => {
-				Content::ED7Scena(ed7::Scena::read(aureole, bytes).map_err(|error| Error::Read { game, message: error.to_string() })?)
+				Content::ED7Scena(ed7::Scena::read_with_layout(aureole, bytes, layout.aureole()).map_err(|error| Error::Read {
+					game,
+					message: error.to_string(),
+				})?)
 			}
 		};
 		Ok(calmare::to_string(aureole, &content, None))
@@ -186,7 +213,7 @@ pub fn decompile(game: Game, bytes: &[u8], codec: &TextCodec) -> Result<String, 
 }
 
 pub fn decompile_cp932(game: Game, bytes: &[u8]) -> Result<String, Error> {
-	decompile(game, bytes, &TextCodec::cp932())
+	decompile(game, bytes, &TextCodec::cp932(), Layout::Themelios)
 }
 
 #[cfg(test)]
@@ -206,5 +233,12 @@ mod tests {
 	fn builds_explicit_gbk_codec_with_charmap() {
 		let map: Charmap = "FF40=♥".parse().unwrap();
 		TextCodec::new(Encoding::Gbk, &map).unwrap();
+	}
+
+	#[test]
+	fn accepts_windows_line_endings() {
+		let source = "calmare ao_k scena\r\nscena:\r\n\tname \"a\" \"b\" \"c\"\r\n";
+		let error = compile(source, &TextCodec::cp932(), Layout::Themelios).unwrap_err();
+		assert!(!error.to_string().contains("unexpected character"));
 	}
 }

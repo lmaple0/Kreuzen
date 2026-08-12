@@ -19,6 +19,9 @@ param(
     [ValidateSet('sjis', 'gbk')]
     [string]$Encoding = 'sjis',
 
+    [ValidateSet('native', 'themelios')]
+    [string]$LegacyLayout = 'themelios',
+
     [string]$Charmap,
 
     [string]$OutputDirectory
@@ -65,7 +68,7 @@ $rows = foreach ($file in $files) {
     New-Item -ItemType Directory -Force -Path ([System.IO.Path]::GetDirectoryName($clm)) | Out-Null
     New-Item -ItemType Directory -Force -Path ([System.IO.Path]::GetDirectoryName($roundtrip)) | Out-Null
 
-    $common = @('--game', $Game, '--enc', $Encoding)
+    $common = @('--game', $Game, '--enc', $Encoding, '--legacy-layout', $LegacyLayout)
     if ($Charmap) {
         $common += @('--charmap', (Resolve-Path -LiteralPath $Charmap).Path)
     }
@@ -108,6 +111,7 @@ $rows = foreach ($file in $files) {
 $summary = [ordered]@{
     Game = $Game
     Encoding = $Encoding
+    LegacyLayout = $LegacyLayout
     InputDirectory = $inputRoot
     OutputDirectory = $outputRoot
     Total = @($rows).Count

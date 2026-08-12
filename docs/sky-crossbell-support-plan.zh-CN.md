@@ -87,7 +87,9 @@ CLI 使用清楚、稳定的名字，并为旧 Calmare 缩写保留兼容别名�
 | `zero` / `zero-evo` / `zero-kai` | `zero` / `zero_e` / `zero_k` |
 | `azure` / `azure-evo` / `azure-kai` | `ao` / `ao_e` / `ao_k` |
 
-不根据 `data_cn`、`data_us` 自动推断游戏版本或编码。目录命名在不同汉化补丁中含义不一致；自动检测只能作为提示，显式参数始终优先。
+不根据 `data_cn`、`data_us` 自动推断游戏版本、编码或 ED7 二进制布局。目录命名在
+不同汉化补丁中含义不一致。布局通过 `--legacy-layout native|themelios` 显式指定；
+解析失败时不自动切换，避免掩盖真正的结构错误。
 
 ## 5. 分阶段实施
 
@@ -106,15 +108,17 @@ CLI 使用清楚、稳定的名字，并为旧 Calmare 缩写保留兼容别名�
 
 状态（2026-08-12）：核心读写、显式 CP932/GBK/charmap、目录处理和结构化
 corpus 报告已完成；本机简体中文 `data_cn/scena` 的 ZeroKai 294 个文件、
-AoKai 355 个文件均达到逐字节往返一致。NISA 日文安装语料仍有已记录的解析失败
-与非字节一致项，Evo/旧 PC 样本和 MOD 专项迁移尚未完成，因此 P1 继续保持进行中。
+AoKai 355 个文件均达到逐字节往返一致。NISA PC 的 ZeroKai 338 个与 AoKai
+384 个文件也已实现无解析/编译失败的结构往返，非字节一致项保留在报告中。
+Inevitable Zero 与 Azure Vitality 专项均已完成静态结构回归，因此 P1 工具链验收完成。按当前项目需求，
+Evo 和旧 PC Zero/Ao 不再作为 P1 验收条件；相关 profile 仅保留实验性路由。
 
-优先顺序：`ZeroKai` → `AoKai` → `ZeroEvo` → `AoEvo` → 旧 PC `Zero/Ao`。
+优先顺序：`ZeroKai` → `AoKai`。Evo 与旧 PC `Zero/Ao` 不列入本阶段验收。
 
 - 接通 ED7 二进制读写和 `.clm` 编译；
 - 将 GBK/charmap 改造成 legacy backend 可显式传入的 codec；
 - 替换 `CALMARE_RAW_BYTES` 全局开关；raw-byte 模式仅保留为诊断/恢复手段；
-- 覆盖 NISA 日文、英文、中文兼容文件以及 Evo 样本；
+- 覆盖 NISA PC 日文、英文和中文兼容文件；
 - 对 Zero/Azure 分别生成成功、失败、非字节往返清单；
 - 用 Inevitable Zero / Azure Vitality 实际涉及的场景文件做重点回归。
 
