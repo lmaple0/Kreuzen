@@ -15,6 +15,12 @@ This removes the sibling-directory build assumption and makes Cargo resolve the
 exact reviewed source revision. The dependency commit must exist on the public
 fork before Kreuzen is pushed. No Aureole source is copied into this repository.
 
+The modern backend's pre-existing sibling dependencies are also pinned to their
+public repositories:
+
+- `falcom-sjis` at `8bf7d1d151081fd1721a4fee7b73274c54b5bc25`;
+- `Gospel` at `9f89bce9d39516d5e7b3c07de510c868af50e134`.
+
 The inspected Aureole checkout still has no root license file. Resolve the
 license/provenance question before publishing binary releases; a successful
 build is not itself redistribution permission.

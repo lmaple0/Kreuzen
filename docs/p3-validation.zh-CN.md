@@ -8,6 +8,8 @@
 
 `kreuzen-legacy` 不再要求本机存在 `../../Aureole`。Calmare、Themélios 和 cp932
 固定到 `lmaple0/Aureole` 提交 `9563e4e`，`Cargo.lock` 记录完整 Git revision。
+原 modern backend 使用的 `../../sjis` 与 `../../Gospel` 也分别固定到公开仓库提交
+`8bf7d1d` 和 `9f89bce`，干净检出不再读取任何兄弟源码目录。
 
 该 Aureole 提交必须先存在于公开远端，Kreuzen 的公开构建才能解析依赖。当前
 Aureole 根目录仍未发现许可证文件，因此本地成功构建不等于已经满足二进制发布

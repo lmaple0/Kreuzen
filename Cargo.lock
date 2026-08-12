@@ -276,6 +276,7 @@ dependencies = [
 [[package]]
 name = "falcom-sjis"
 version = "0.3.0"
+source = "git+https://github.com/Aureole-Suite/falcom-sjis.git?rev=8bf7d1d151081fd1721a4fee7b73274c54b5bc25#8bf7d1d151081fd1721a4fee7b73274c54b5bc25"
 dependencies = [
  "anyhow",
  "phf",
@@ -333,6 +334,7 @@ dependencies = [
 [[package]]
 name = "gospel"
 version = "0.4.0"
+source = "git+https://github.com/Aureole-Suite/Gospel.git?rev=9f89bce9d39516d5e7b3c07de510c868af50e134#9f89bce9d39516d5e7b3c07de510c868af50e134"
 dependencies = [
  "paste",
  "smallvec",
