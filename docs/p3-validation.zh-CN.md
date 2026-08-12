@@ -27,11 +27,17 @@ Aureole 根目录仍未发现许可证文件，因此本地成功构建不等于
 
 - 产物：`out/kreuzen-windows-x64/kreuzen.exe`；
 - 大小：7,209,984 字节；
-- SHA-256：`313F5317514B4F7F2A0B1D5234E374F45FE4CC4EF0A5C3C15FAB0F6F0C4BA329`；
+- SHA-256：`7FE7D9905658AB8382C09F3A48E90C4F57382E2BB0C43EF3D4185FAFA5023E47`；
 - 同目录包含英文 README、中文 README 和 P2 验证记录；
 - 构建使用 `cargo build --locked --release -p kreuzen-cli`。
 
 该文件是本地验证产物，未创建 GitHub Release。
+
+另从提交 `4085e3b` 创建全新 Git 检出，并使用独立 `CARGO_HOME` 执行同一
+`--locked --release` 构建。构建成功，日志中的 falcom-sjis、Gospel 和 Aureole
+均来自固定 Git revision；检出目录之外没有提供源码兄弟目录。由于 Aureole
+`9563e4e` 尚未推送，验证时仅对该 URL 使用本地 Git URL 替换，公开远端可用性仍
+需在推送 Aureole 后复核。
 
 ## Release EXE 副本验证
 
