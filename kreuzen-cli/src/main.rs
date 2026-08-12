@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use kreuzen::{Enc, Game};
-use kreuzen_legacy::Game as LegacyGame;
+use kreuzen_legacy::{Encoding as LegacyEncoding, Game as LegacyGame, TextCodec};
 use kreuzen_syntax::{Print as _, diag};
 use rootcause::prelude::ResultExt as _;
 use tracing_subscriber::prelude::*;
@@ -187,6 +187,10 @@ fn windows_wait() {
 fn windows_wait() {}
 
 fn handle_dir(args: &Args, path: &Path, out: Option<&Path>) -> bool {
+	if matches!(args.game_for(path), Some(GameProfile::Legacy(_))) {
+		return handle_legacy_dir(args, path, out);
+	}
+
 	let mut krz = Vec::new();
 	let mut dat = Vec::new();
 	for entry in WalkDir::new(path).into_iter().filter_map(|v| v.ok()) {
@@ -230,6 +234,60 @@ fn handle_dir(args: &Args, path: &Path, out: Option<&Path>) -> bool {
 	}
 }
 
+fn handle_legacy_dir(args: &Args, path: &Path, out: Option<&Path>) -> bool {
+	let Some(GameProfile::Legacy(game)) = args.game_for(path) else {
+		tracing::error!("Specify a legacy --game when processing an ED6/ED7 directory");
+		return false;
+	};
+	let mut source = Vec::new();
+	let mut binary = Vec::new();
+	for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
+		if !entry.metadata().is_ok_and(|metadata| metadata.is_file()) {
+			continue;
+		}
+		let extension = entry.path().extension().and_then(|value| value.to_str()).unwrap_or_default();
+		let relative = entry.path().strip_prefix(path).expect("walked path is below root").to_owned();
+		if extension.eq_ignore_ascii_case("clm") {
+			source.push(relative);
+		} else if extension.eq_ignore_ascii_case(game.binary_extension()) {
+			binary.push(relative);
+		}
+	}
+
+	if !source.is_empty() && !binary.is_empty() {
+		tracing::error!(
+			"Found both clm ({}) and binary ({}) files in the same directory",
+			source[0].display(),
+			binary[0].display()
+		);
+		return false;
+	}
+	if source.is_empty() && binary.is_empty() {
+		tracing::error!("No clm or {} files found in directory", game.binary_extension());
+		return false;
+	}
+
+	if !source.is_empty() {
+		let outdir = out
+			.map(Path::to_owned)
+			.unwrap_or_else(|| path.with_file_name(format!("{}.bin", path.file_name().unwrap().to_string_lossy())));
+		return source.into_iter().fold(true, |success, relative| {
+			let infile = path.join(&relative);
+			let outfile = outdir.join(relative.with_extension(game.binary_extension()));
+			success & compile_legacy(args, &infile, Some(&outfile))
+		});
+	}
+
+	let outdir = out
+		.map(Path::to_owned)
+		.unwrap_or_else(|| path.with_file_name(format!("{}.clm", path.file_name().unwrap().to_string_lossy())));
+	binary.into_iter().fold(true, |success, relative| {
+		let infile = path.join(&relative);
+		let outfile = outdir.join(relative.with_extension("clm"));
+		success & decompile(args, &infile, &outfile)
+	})
+}
+
 fn handle_file(args: &Args, path: &Path, out: Option<&Path>) -> bool {
 	if path.extension().is_some_and(|e| e == "krz") {
 		let infile = path;
@@ -248,8 +306,7 @@ fn handle_file(args: &Args, path: &Path, out: Option<&Path>) -> bool {
 		let outfile = out.map_or(outfile, Path::to_owned);
 		decompile(args, infile, &outfile)
 	} else if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("clm")) {
-		tracing::error!("Legacy .clm compilation is planned for P1; P0 currently supports read-only decompilation");
-		false
+		compile_legacy(args, path, out)
 	} else {
 		tracing::error!("File is not a supported scenario or source file");
 		false
@@ -309,6 +366,36 @@ fn compile(args: &Args, infile: &Path, outfile: &Path) -> bool {
 	}
 }
 
+fn compile_legacy(args: &Args, infile: &Path, out: Option<&Path>) -> bool {
+	let _span = tracing::error_span!("compile_legacy", file = %infile.display()).entered();
+	match compile_legacy_inner(args, infile, out) {
+		Ok(v) => v,
+		Err(e) => {
+			tracing::error!("{e}");
+			false
+		}
+	}
+}
+
+fn compile_legacy_inner(args: &Args, infile: &Path, out: Option<&Path>) -> rootcause::Result<bool> {
+	let source = std::fs::read_to_string(infile).context_with(|| format!("failed to read file: {}", infile.display()))?;
+	let codec = legacy_codec(args)?;
+	let (game, bytes) = kreuzen_legacy::compile(&source, &codec).map_err(|error| rootcause::report!("{error}"))?;
+	if let Some(expected) = args.game.map(GameProfile::from)
+		&& expected != GameProfile::Legacy(game)
+	{
+		rootcause::bail!("source declares {game:?}, but --game selects a different profile");
+	}
+	let derived = infile.with_extension(game.binary_extension());
+	let outfile = match out {
+		Some(out) if out.is_dir() => out.join(derived.file_name().unwrap()),
+		Some(out) => out.to_owned(),
+		None => derived,
+	};
+	write_file(&outfile, &bytes)?;
+	Ok(true)
+}
+
 fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Result<bool> {
 	let Some(game) = args.game_for(infile) else {
 		tracing::error!("Could not detect game from exe name or path; specify --game to decompile");
@@ -328,10 +415,8 @@ fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Res
 			scena.print_to_string()
 		}
 		GameProfile::Legacy(game) => {
-			if args.enc.is_some_and(|enc| !matches!(enc, EncArg::Sjis)) || args.charmap.is_some() {
-				rootcause::bail!("P0 legacy decompilation currently supports CP932 without a custom charmap only");
-			}
-			kreuzen_legacy::decompile_cp932(game, &bytes).map_err(|error| rootcause::report!("{error}"))?
+			let codec = legacy_codec(args)?;
+			kreuzen_legacy::decompile(game, &bytes, &codec).map_err(|error| rootcause::report!("{error}"))?
 		}
 	};
 	write_file(outfile, str.as_bytes())?;
@@ -435,6 +520,16 @@ fn load_charmap(args: &Args) -> rootcause::Result<kreuzen::charmap::Charmap> {
 	};
 	let source = std::fs::read_to_string(path).context_with(|| format!("failed to read charmap: {}", path.display()))?;
 	source.parse().map_err(|e| rootcause::report!("invalid charmap {}: {e}", path.display()))
+}
+
+fn legacy_codec(args: &Args) -> rootcause::Result<TextCodec> {
+	let encoding = match args.enc.unwrap_or(EncArg::Sjis) {
+		EncArg::Sjis => LegacyEncoding::Cp932,
+		EncArg::Gbk => LegacyEncoding::Gbk,
+		EncArg::Utf8 => rootcause::bail!("UTF-8 is not a valid ED6/ED7 binary text encoding"),
+	};
+	let charmap = load_charmap(args)?;
+	TextCodec::new(encoding, &charmap).map_err(|error| rootcause::report!("{error}"))
 }
 
 #[cfg(test)]

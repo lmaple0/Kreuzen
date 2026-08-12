@@ -91,6 +91,16 @@ impl FromStr for Charmap {
 }
 
 impl Charmap {
+	/// Iterate over the byte-to-glyph entries in this map.
+	///
+	/// Each entry is guaranteed to contain exactly one Unicode scalar value by
+	/// the parser, and the byte sequences are prefix-free.
+	pub fn mappings(&self) -> impl Iterator<Item = (&[u8], char)> {
+		self.decode
+			.iter()
+			.map(|(bytes, text)| (bytes.as_slice(), text.chars().next().expect("validated charmap glyph")))
+	}
+
 	pub(crate) fn decode_match<'a>(&'a self, bytes: &[u8]) -> Option<(&'a str, usize)> {
 		self.decode
 			.iter()

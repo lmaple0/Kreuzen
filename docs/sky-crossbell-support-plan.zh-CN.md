@@ -104,6 +104,11 @@ CLI 使用清楚、稳定的名字，并为旧 Calmare 缩写保留兼容别名�
 
 ### P1：Crossbell 主线
 
+状态（2026-08-12）：核心读写、显式 CP932/GBK/charmap、目录处理和结构化
+corpus 报告已完成；本机简体中文 `data_cn/scena` 的 ZeroKai 294 个文件、
+AoKai 355 个文件均达到逐字节往返一致。NISA 日文安装语料仍有已记录的解析失败
+与非字节一致项，Evo/旧 PC 样本和 MOD 专项迁移尚未完成，因此 P1 继续保持进行中。
+
 优先顺序：`ZeroKai` → `AoKai` → `ZeroEvo` → `AoEvo` → 旧 PC `Zero/Ao`。
 
 - 接通 ED7 二进制读写和 `.clm` 编译；

@@ -5,5 +5,7 @@ edition = "2024"
 
 [dependencies]
 calmare = { path = "../../Aureole/calmare" }
+cp932 = { path = "../../Aureole/cp932" }
+kreuzen = { path = "../kreuzen" }
 themelios = { path = "../../Aureole/themelios" }
 thiserror = "2.0.18"
