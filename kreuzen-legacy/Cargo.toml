@@ -1,0 +1,9 @@
+[package]
+name = "kreuzen-legacy"
+version.workspace = true
+edition = "2024"
+
+[dependencies]
+calmare = { path = "../../Aureole/calmare" }
+themelios = { path = "../../Aureole/themelios" }
+thiserror = "2.0.18"

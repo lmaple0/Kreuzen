@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 kreuzen.path = "../kreuzen"
+kreuzen-legacy.path = "../kreuzen-legacy"
 kreuzen-syntax.path = "../kreuzen-syntax"
 rootcause = "0.12.1"
 clap = { version = "4.5.20", features = ["derive"] }

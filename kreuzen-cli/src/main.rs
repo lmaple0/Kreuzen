@@ -3,6 +3,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use kreuzen::{Enc, Game};
+use kreuzen_legacy::Game as LegacyGame;
 use kreuzen_syntax::{Print as _, diag};
 use rootcause::prelude::ResultExt as _;
 use tracing_subscriber::prelude::*;
@@ -16,17 +17,67 @@ enum GameArg {
 	Cs4,
 	Reverie,
 	Tx,
+	#[value(name = "sky-fc", alias = "fc")]
+	SkyFc,
+	#[value(name = "sky-fc-evo", alias = "fc_e")]
+	SkyFcEvo,
+	#[value(name = "sky-fc-kai", alias = "fc_k")]
+	SkyFcKai,
+	#[value(name = "sky-sc", alias = "sc")]
+	SkySc,
+	#[value(name = "sky-sc-evo", alias = "sc_e")]
+	SkyScEvo,
+	#[value(name = "sky-sc-kai", alias = "sc_k")]
+	SkyScKai,
+	#[value(name = "sky-3rd", alias = "tc")]
+	Sky3rd,
+	#[value(name = "sky-3rd-evo", alias = "tc_e")]
+	Sky3rdEvo,
+	#[value(name = "sky-3rd-kai", alias = "tc_k")]
+	Sky3rdKai,
+	Zero,
+	#[value(name = "zero-evo", alias = "zero_e")]
+	ZeroEvo,
+	#[value(name = "zero-kai", alias = "zero_k")]
+	ZeroKai,
+	#[value(name = "azure", alias = "ao")]
+	Azure,
+	#[value(name = "azure-evo", alias = "ao_e")]
+	AzureEvo,
+	#[value(name = "azure-kai", alias = "ao_k")]
+	AzureKai,
 }
 
-impl From<GameArg> for Game {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GameProfile {
+	Modern(Game),
+	Legacy(LegacyGame),
+}
+
+impl From<GameArg> for GameProfile {
 	fn from(g: GameArg) -> Self {
 		match g {
-			GameArg::Cs1 => Game::Cs1,
-			GameArg::Cs2 => Game::Cs2,
-			GameArg::Cs3 => Game::Cs3,
-			GameArg::Cs4 => Game::Cs4,
-			GameArg::Reverie => Game::Reverie,
-			GameArg::Tx => Game::Tx,
+			GameArg::Cs1 => Self::Modern(Game::Cs1),
+			GameArg::Cs2 => Self::Modern(Game::Cs2),
+			GameArg::Cs3 => Self::Modern(Game::Cs3),
+			GameArg::Cs4 => Self::Modern(Game::Cs4),
+			GameArg::Reverie => Self::Modern(Game::Reverie),
+			GameArg::Tx => Self::Modern(Game::Tx),
+			GameArg::SkyFc => Self::Legacy(LegacyGame::SkyFc),
+			GameArg::SkyFcEvo => Self::Legacy(LegacyGame::SkyFcEvo),
+			GameArg::SkyFcKai => Self::Legacy(LegacyGame::SkyFcKai),
+			GameArg::SkySc => Self::Legacy(LegacyGame::SkySc),
+			GameArg::SkyScEvo => Self::Legacy(LegacyGame::SkyScEvo),
+			GameArg::SkyScKai => Self::Legacy(LegacyGame::SkyScKai),
+			GameArg::Sky3rd => Self::Legacy(LegacyGame::Sky3rd),
+			GameArg::Sky3rdEvo => Self::Legacy(LegacyGame::Sky3rdEvo),
+			GameArg::Sky3rdKai => Self::Legacy(LegacyGame::Sky3rdKai),
+			GameArg::Zero => Self::Legacy(LegacyGame::Zero),
+			GameArg::ZeroEvo => Self::Legacy(LegacyGame::ZeroEvo),
+			GameArg::ZeroKai => Self::Legacy(LegacyGame::ZeroKai),
+			GameArg::Azure => Self::Legacy(LegacyGame::Azure),
+			GameArg::AzureEvo => Self::Legacy(LegacyGame::AzureEvo),
+			GameArg::AzureKai => Self::Legacy(LegacyGame::AzureKai),
 		}
 	}
 }
@@ -63,7 +114,7 @@ struct Args {
 	game: Option<GameArg>,
 	#[clap(long, help = "Script text encoding")]
 	enc: Option<EncArg>,
-	#[clap(long, value_name = "FILE", help = "Custom HEX=TEXT character map")]
+	#[clap(long, value_name = "FILE", help = "Custom HEX=GLYPH character map")]
 	charmap: Option<PathBuf>,
 	#[clap(long, default_value = "sugar", help = "Decompile depth")]
 	mode: DecompileMode,
@@ -73,8 +124,8 @@ struct Args {
 }
 
 impl Args {
-	fn game_for(&self, path: &Path) -> Option<Game> {
-		self.game.map(Game::from).or_else(|| detect_game(path))
+	fn game_for(&self, path: &Path) -> Option<GameProfile> {
+		self.game.map(GameProfile::from).or_else(|| detect_game(path))
 	}
 }
 
@@ -188,8 +239,19 @@ fn handle_file(args: &Args, path: &Path, out: Option<&Path>) -> bool {
 		let infile = path;
 		let outfile = resolve_out(out, path, ".dat", ".krz");
 		decompile(args, infile, &outfile)
+	} else if path
+		.extension()
+		.is_some_and(|e| e.eq_ignore_ascii_case("bin") || e.eq_ignore_ascii_case("_sn"))
+	{
+		let infile = path;
+		let outfile = path.with_extension("clm");
+		let outfile = out.map_or(outfile, Path::to_owned);
+		decompile(args, infile, &outfile)
+	} else if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("clm")) {
+		tracing::error!("Legacy .clm compilation is planned for P1; P0 currently supports read-only decompilation");
+		false
 	} else {
-		tracing::error!("File is not krz or dat");
+		tracing::error!("File is not a supported scenario or source file");
 		false
 	}
 }
@@ -252,18 +314,26 @@ fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Res
 		tracing::error!("Could not detect game from exe name or path; specify --game to decompile");
 		return Ok(false);
 	};
-	let enc = args.enc.map(Enc::from).unwrap_or_else(|| detect_enc(game, infile));
-	let charmap = load_charmap(args)?;
-
 	let bytes = std::fs::read(infile).context_with(|| format!("failed to read file: {}", infile.display()))?;
-	let scena = kreuzen::read_with_charmap(game, enc, &bytes, &charmap).context("failed to read scena")?;
-	let scena = match args.mode {
-		DecompileMode::Flat => scena,
-		DecompileMode::Tree => kreuzen::decompile(&scena)?,
-		DecompileMode::Sugar => kreuzen::sugar::resugar(&kreuzen::decompile(&scena)?)?,
+	let str = match game {
+		GameProfile::Modern(game) => {
+			let enc = args.enc.map(Enc::from).unwrap_or_else(|| detect_enc(game, infile));
+			let charmap = load_charmap(args)?;
+			let scena = kreuzen::read_with_charmap(game, enc, &bytes, &charmap).context("failed to read scena")?;
+			let scena = match args.mode {
+				DecompileMode::Flat => scena,
+				DecompileMode::Tree => kreuzen::decompile(&scena)?,
+				DecompileMode::Sugar => kreuzen::sugar::resugar(&kreuzen::decompile(&scena)?)?,
+			};
+			scena.print_to_string()
+		}
+		GameProfile::Legacy(game) => {
+			if args.enc.is_some_and(|enc| !matches!(enc, EncArg::Sjis)) || args.charmap.is_some() {
+				rootcause::bail!("P0 legacy decompilation currently supports CP932 without a custom charmap only");
+			}
+			kreuzen_legacy::decompile_cp932(game, &bytes).map_err(|error| rootcause::report!("{error}"))?
+		}
 	};
-
-	let str = scena.print_to_string();
 	write_file(outfile, str.as_bytes())?;
 	Ok(true)
 }
@@ -294,33 +364,43 @@ fn compile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Resul
 fn skip_dat(args: &Args, path: &Path) -> bool {
 	match path.file_name().and_then(|n| n.to_str()) {
 		Some("utf8sjis.dat" | "sjisutf8.dat") => true,
-		Some("magic.dat") => args.game_for(path) == Some(Game::Tx),
+		Some("magic.dat") => args.game_for(path) == Some(GameProfile::Modern(Game::Tx)),
 		_ => false,
 	}
 }
 
-fn detect_game(infile: &Path) -> Option<Game> {
+fn detect_game(infile: &Path) -> Option<GameProfile> {
 	detect_game_from_exe().or_else(|| {
 		parents(infile).find_map(|c| match c {
-			"Trails of Cold Steel" => Some(Game::Cs1),
-			"Trails of Cold Steel II" => Some(Game::Cs2),
-			"The Legend of Heroes Trails of Cold Steel III" => Some(Game::Cs3),
-			"The Legend of Heroes Trails of Cold Steel IV" => Some(Game::Cs4),
-			"The Legend of Heroes Trails into Reverie" => Some(Game::Reverie),
-			"Tokyo Xanadu eX+" => Some(Game::Tx),
+			"Trails of Cold Steel" => Some(GameProfile::Modern(Game::Cs1)),
+			"Trails of Cold Steel II" => Some(GameProfile::Modern(Game::Cs2)),
+			"The Legend of Heroes Trails of Cold Steel III" => Some(GameProfile::Modern(Game::Cs3)),
+			"The Legend of Heroes Trails of Cold Steel IV" => Some(GameProfile::Modern(Game::Cs4)),
+			"The Legend of Heroes Trails into Reverie" => Some(GameProfile::Modern(Game::Reverie)),
+			"Tokyo Xanadu eX+" => Some(GameProfile::Modern(Game::Tx)),
+			"Trails in the Sky" => Some(GameProfile::Legacy(LegacyGame::SkyFc)),
+			"Trails in the Sky SC" => Some(GameProfile::Legacy(LegacyGame::SkySc)),
+			"Trails in the Sky the 3rd" => Some(GameProfile::Legacy(LegacyGame::Sky3rd)),
+			"The Legend of Heroes Trails from Zero" => Some(GameProfile::Legacy(LegacyGame::ZeroKai)),
+			"The Legend of Heroes Trails to Azure" => Some(GameProfile::Legacy(LegacyGame::AzureKai)),
 			_ => None,
 		})
 	})
 }
 
-fn detect_game_from_exe() -> Option<Game> {
+fn detect_game_from_exe() -> Option<GameProfile> {
 	match std::env::current_exe().ok()?.file_stem()?.to_str()? {
-		"kreuzen-cs1" => Some(Game::Cs1),
-		"kreuzen-cs2" => Some(Game::Cs2),
-		"kreuzen-cs3" => Some(Game::Cs3),
-		"kreuzen-cs4" => Some(Game::Cs4),
-		"kreuzen-reverie" => Some(Game::Reverie),
-		"kreuzen-tx" => Some(Game::Tx),
+		"kreuzen-cs1" => Some(GameProfile::Modern(Game::Cs1)),
+		"kreuzen-cs2" => Some(GameProfile::Modern(Game::Cs2)),
+		"kreuzen-cs3" => Some(GameProfile::Modern(Game::Cs3)),
+		"kreuzen-cs4" => Some(GameProfile::Modern(Game::Cs4)),
+		"kreuzen-reverie" => Some(GameProfile::Modern(Game::Reverie)),
+		"kreuzen-tx" => Some(GameProfile::Modern(Game::Tx)),
+		"kreuzen-sky-fc" => Some(GameProfile::Legacy(LegacyGame::SkyFc)),
+		"kreuzen-sky-sc" => Some(GameProfile::Legacy(LegacyGame::SkySc)),
+		"kreuzen-sky-3rd" => Some(GameProfile::Legacy(LegacyGame::Sky3rd)),
+		"kreuzen-zero" => Some(GameProfile::Legacy(LegacyGame::ZeroKai)),
+		"kreuzen-azure" => Some(GameProfile::Legacy(LegacyGame::AzureKai)),
 		_ => None,
 	}
 }
@@ -355,6 +435,23 @@ fn load_charmap(args: &Args) -> rootcause::Result<kreuzen::charmap::Charmap> {
 	};
 	let source = std::fs::read_to_string(path).context_with(|| format!("failed to read charmap: {}", path.display()))?;
 	source.parse().map_err(|e| rootcause::report!("invalid charmap {}: {e}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn detects_legacy_games_from_install_paths() {
+		assert_eq!(
+			detect_game(Path::new(r"C:\Games\Trails in the Sky SC\DAT\ED6_DT21\A0019._SN")),
+			Some(GameProfile::Legacy(LegacyGame::SkySc))
+		);
+		assert_eq!(
+			detect_game(Path::new(r"C:\Games\The Legend of Heroes Trails from Zero\data\scena\a0003.bin")),
+			Some(GameProfile::Legacy(LegacyGame::ZeroKai))
+		);
+	}
 }
 
 fn write_file(outfile: &Path, data: &[u8]) -> rootcause::Result<()> {
