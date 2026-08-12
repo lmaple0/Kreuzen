@@ -48,7 +48,13 @@ impl<'a, 'b, 'e, T> Alt<'a, 'b, 'e, T> {
 
 			if clone.committed {
 				self.committed = true;
-				self.parser.cursor = clone.parser.cursor;
+				// This alternative is the only one that can still say anything
+				// about the failure, so its expectations replace whatever the
+				// caller had pending. An empty set means it reported directly.
+				let cursor = clone.parser.cursor;
+				let expect = std::mem::take(&mut clone.parser.expect);
+				self.parser.cursor = cursor;
+				self.parser.expect = expect;
 			} else if clone.rejected {
 				self.parser.errors.errors.truncate(n);
 			} else if clone.parser.cursor.pos() >= self.max_pos {
