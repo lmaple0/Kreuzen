@@ -158,7 +158,7 @@ impl<T: Parse, const N: usize> Parse for [T; N] {
 }
 
 pub(crate) fn bracket<T>(p: &mut Parser, name: &'static str, f: impl FnOnce(&mut Parser) -> Result<T>) -> Result<T> {
-	p.cursor.keyword(name)?;
+	p.keyword(name)?;
 	p.delim('[', f)
 }
 
