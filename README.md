@@ -1,5 +1,7 @@
 # Kreuzen
 
+[简体中文说明](README_CN.md)
+
 A decompiler for *Trails of Cold Steel I-IV*, *Trails into Reverie*, and *Tokyo Xanadu eX+*.
 This maintained fork also provides an explicit legacy backend for the PC releases of the
 Crossbell games and *Trails in the Sky*.

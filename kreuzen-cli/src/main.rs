@@ -113,18 +113,23 @@ impl From<LegacyLayoutArg> for LegacyLayout {
 }
 
 #[derive(clap::Parser)]
+#[command(
+	about = "Falcom scenario compiler/decompiler with modern and ED6/ED7 backends",
+	long_about = "Falcom scenario compiler/decompiler with modern and ED6/ED7 backends.\n\nSky SC and Sky the 3rd PC scripts use ._SN <-> .clm with --game sky-sc or --game sky-3rd. Chinese patches normally require explicit --enc gbk. Legacy encoding and ED7 layout failures are reported directly; Kreuzen never retries another value automatically."
+)]
 struct Args {
+	#[arg(value_name = "FILES", help = "Scenario/source files or one directory")]
 	files: Vec<PathBuf>,
 
-	#[clap(long, help = "Source game")]
+	#[clap(long, help = "Source game; explicit value overrides path/executable detection")]
 	game: Option<GameArg>,
-	#[clap(long, help = "Script text encoding")]
+	#[clap(long, help = "Script text encoding; legacy default is sjis, Chinese patches normally use gbk")]
 	enc: Option<EncArg>,
 	#[clap(long, value_name = "FILE", help = "Custom HEX=GLYPH character map")]
 	charmap: Option<PathBuf>,
-	#[clap(long, default_value = "sugar", help = "Decompile depth")]
+	#[clap(long, default_value = "sugar", help = "Modern-backend decompile depth")]
 	mode: DecompileMode,
-	#[clap(long, default_value = "themelios", help = "ED7 binary layout; never auto-detected")]
+	#[clap(long, default_value = "themelios", help = "ED7-only binary layout; never auto-detected or retried")]
 	legacy_layout: LegacyLayoutArg,
 	#[clap(long, short, help = "Output file")]
 	output: Option<PathBuf>,
@@ -387,8 +392,7 @@ fn compile_legacy(args: &Args, infile: &Path, out: Option<&Path>) -> bool {
 fn compile_legacy_inner(args: &Args, infile: &Path, out: Option<&Path>) -> rootcause::Result<bool> {
 	let source = std::fs::read_to_string(infile).context_with(|| format!("failed to read file: {}", infile.display()))?;
 	let codec = legacy_codec(args)?;
-	let (game, bytes) = kreuzen_legacy::compile(&source, &codec, args.legacy_layout.into())
-		.map_err(|error| rootcause::report!("{error}"))?;
+	let (game, bytes) = kreuzen_legacy::compile(&source, &codec, args.legacy_layout.into()).map_err(|error| rootcause::report!("{error}"))?;
 	if let Some(expected) = args.game.map(GameProfile::from)
 		&& expected != GameProfile::Legacy(game)
 	{
@@ -429,8 +433,7 @@ fn decompile_inner(args: &Args, infile: &Path, outfile: &Path) -> rootcause::Res
 		}
 		GameProfile::Legacy(game) => {
 			let codec = legacy_codec(args)?;
-			kreuzen_legacy::decompile(game, &bytes, &codec, args.legacy_layout.into())
-				.map_err(|error| rootcause::report!("{error}"))?
+			kreuzen_legacy::decompile(game, &bytes, &codec, args.legacy_layout.into()).map_err(|error| rootcause::report!("{error}"))?
 		}
 	};
 	write_file(outfile, str.as_bytes())?;
@@ -469,26 +472,31 @@ fn skip_dat(args: &Args, path: &Path) -> bool {
 }
 
 fn detect_game(infile: &Path) -> Option<GameProfile> {
-	detect_game_from_exe().or_else(|| {
-		parents(infile).find_map(|c| match c {
-			"Trails of Cold Steel" => Some(GameProfile::Modern(Game::Cs1)),
-			"Trails of Cold Steel II" => Some(GameProfile::Modern(Game::Cs2)),
-			"The Legend of Heroes Trails of Cold Steel III" => Some(GameProfile::Modern(Game::Cs3)),
-			"The Legend of Heroes Trails of Cold Steel IV" => Some(GameProfile::Modern(Game::Cs4)),
-			"The Legend of Heroes Trails into Reverie" => Some(GameProfile::Modern(Game::Reverie)),
-			"Tokyo Xanadu eX+" => Some(GameProfile::Modern(Game::Tx)),
-			"Trails in the Sky" => Some(GameProfile::Legacy(LegacyGame::SkyFc)),
-			"Trails in the Sky SC" => Some(GameProfile::Legacy(LegacyGame::SkySc)),
-			"Trails in the Sky the 3rd" => Some(GameProfile::Legacy(LegacyGame::Sky3rd)),
-			"The Legend of Heroes Trails from Zero" => Some(GameProfile::Legacy(LegacyGame::ZeroKai)),
-			"The Legend of Heroes Trails to Azure" => Some(GameProfile::Legacy(LegacyGame::AzureKai)),
-			_ => None,
-		})
-	})
+	detect_game_from_exe().or_else(|| parents(infile).find_map(detect_game_from_install_component))
+}
+
+fn detect_game_from_install_component(component: &str) -> Option<GameProfile> {
+	let profiles = [
+		("Trails of Cold Steel", GameProfile::Modern(Game::Cs1)),
+		("Trails of Cold Steel II", GameProfile::Modern(Game::Cs2)),
+		("The Legend of Heroes Trails of Cold Steel III", GameProfile::Modern(Game::Cs3)),
+		("The Legend of Heroes Trails of Cold Steel IV", GameProfile::Modern(Game::Cs4)),
+		("The Legend of Heroes Trails into Reverie", GameProfile::Modern(Game::Reverie)),
+		("Tokyo Xanadu eX+", GameProfile::Modern(Game::Tx)),
+		("Trails in the Sky", GameProfile::Legacy(LegacyGame::SkyFc)),
+		("Trails in the Sky SC", GameProfile::Legacy(LegacyGame::SkySc)),
+		("Trails in the Sky the 3rd", GameProfile::Legacy(LegacyGame::Sky3rd)),
+		("The Legend of Heroes Trails from Zero", GameProfile::Legacy(LegacyGame::ZeroKai)),
+		("The Legend of Heroes Trails to Azure", GameProfile::Legacy(LegacyGame::AzureKai)),
+	];
+	profiles
+		.into_iter()
+		.find_map(|(name, profile)| component.eq_ignore_ascii_case(name).then_some(profile))
 }
 
 fn detect_game_from_exe() -> Option<GameProfile> {
-	match std::env::current_exe().ok()?.file_stem()?.to_str()? {
+	let exe = std::env::current_exe().ok()?.file_stem()?.to_str()?.to_ascii_lowercase();
+	match exe.as_str() {
 		"kreuzen-cs1" => Some(GameProfile::Modern(Game::Cs1)),
 		"kreuzen-cs2" => Some(GameProfile::Modern(Game::Cs2)),
 		"kreuzen-cs3" => Some(GameProfile::Modern(Game::Cs3)),
@@ -555,6 +563,10 @@ mod tests {
 		assert_eq!(
 			detect_game(Path::new(r"C:\Games\Trails in the Sky SC\DAT\ED6_DT21\A0019._SN")),
 			Some(GameProfile::Legacy(LegacyGame::SkySc))
+		);
+		assert_eq!(
+			detect_game(Path::new(r"C:\Games\TRAILS IN THE SKY THE 3RD\data\ED6_DT21\a0028._sn")),
+			Some(GameProfile::Legacy(LegacyGame::Sky3rd))
 		);
 		assert_eq!(
 			detect_game(Path::new(r"C:\Games\The Legend of Heroes Trails from Zero\data\scena\a0003.bin")),

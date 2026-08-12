@@ -4,8 +4,8 @@ version.workspace = true
 edition = "2024"
 
 [dependencies]
-calmare = { path = "../../Aureole/calmare" }
-cp932 = { path = "../../Aureole/cp932" }
+calmare = { git = "https://github.com/lmaple0/Aureole.git", rev = "9563e4e" }
+cp932 = { git = "https://github.com/lmaple0/Aureole.git", rev = "9563e4e" }
 kreuzen = { path = "../kreuzen" }
-themelios = { path = "../../Aureole/themelios" }
+themelios = { git = "https://github.com/lmaple0/Aureole.git", rev = "9563e4e" }
 thiserror = "2.0.18"
