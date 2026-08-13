@@ -1,6 +1,6 @@
 # Sky / Crossbell 支持实施计划
 
-状态：P0、P1 已完成；P2 的 SC / the 3rd 静态 corpus 验收已完成；FC 已移出当前计划
+状态：P0、P1 已完成；P2 的 SC / the 3rd 静态 corpus 验收已完成；FC 补充验收已完成
 
 工作分支：`main`
 分支治理：fork 的新维护线为默认 `main`；原上游历史保存在 `legacy`
@@ -46,7 +46,7 @@
 | Zero/Azure Evo | 已解密资源位于 `D:\idm_download\ed7_kiseki_evo_psv` | 可用于格式验证；繁中自定义字符映射需单独验证 |
 | Sky SC | 本机已安装 | 已安装汉化/语音等修改，不是干净原版 |
 | Sky the 3rd | 本机已安装 | 需要从归档中只读提取场景样本 |
-| Sky FC | 当前未发现本机安装 | 在宣称 FC 完成前必须补充合法测试样本 |
+| Sky FC | 本机已安装汉化版 | 同时包含语音、EVO 音乐等修改，不是干净原版基线 |
 
 游戏完整脚本不进入仓库。测试语料使用本机路径清单和 SHA-256 manifest；仓库内仅保留人工构造、足够小的格式 fixture。
 
@@ -126,21 +126,22 @@ Evo 和旧 PC Zero/Ao 不再作为 P1 验收条件；相关 profile 仅保留实
 状态（2026-08-12）：本机汉化版 SC 的 709 个文件与 the 3rd 的 368 个文件
 均完成反编译、重编译和二次反编译稳定性验证，解析/编译/二次解析错误均为 0。
 SC 有 472 个字节一致、237 个规范化差异，但 709 个文件的源码均在第二轮稳定；
-the 3rd 为 368 个全部字节一致。按当前维护范围，FC 暂时忽略，不作为 P2/P3
-完成条件，也不把 SC/3rd 的结果外推为 FC 已完成。详见 `p2-validation.zh-CN.md`。
+the 3rd 为 368 个全部字节一致。之后使用本机 FC 汉化版三套各 491 个文件补充
+验收，全部达到解析、编译和二次解析错误为 0，源码稳定 491/491；详见
+`p4-sky-fc-validation.zh-CN.md`。该结果不外推为干净零售版或游戏内运行验证。
 
-当前范围：`Sky SC` → `Sky the 3rd`。Sky FC 暂不推进。
+当前范围：`Sky SC` → `Sky the 3rd` → `Sky FC` 补充静态验收。
 
 - 接通 ED6 `._sn` 场景格式；
 - 用 Factoria 或现有只读工具提取归档中的场景测试集，绝不覆盖游戏安装目录；
 - 验证英文/日文/现有中文补丁所需编码和字体映射；
 - 建立 SC 与 the 3rd 各自的指令差异和非往返例外表。
 
-验收：SC 与 the 3rd 分别独立通过 corpus 测试；FC 不计入当前验收。
+验收：SC、the 3rd 与 FC 分别独立通过 corpus 测试；FC 的混合 MOD 来源单独注明。
 
 ### P3：Sky PC 统一体验
 
-状态（2026-08-12）：不再补 FC 或 Sky Evo/Kai。公开构建依赖已固定到 Aureole
+状态（2026-08-13）：FC 已补充静态验收，仍不补 Sky Evo/Kai。公开构建依赖已固定到 Aureole
 验证提交；CLI 帮助、中文 README、故障诊断和 Windows 构建脚本已完成。release
 EXE 已在 SC 与 the 3rd 独立脚本副本上完成编译/重载验证，详见
 `p3-validation.zh-CN.md`。尚未进行游戏进程内验证或发布 Release。

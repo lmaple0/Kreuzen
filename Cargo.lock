@@ -76,7 +76,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 [[package]]
 name = "calmare"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "extend",
  "glam",
@@ -181,7 +181,7 @@ dependencies = [
 [[package]]
 name = "cp932"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "encoding_rs",
  "thiserror 1.0.69",
@@ -325,7 +325,7 @@ checksum = "b5418c17512bdf42730f9032c74e1ae39afc408745ebb2acf72fbc4691c17945"
 [[package]]
 name = "gospel"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "paste",
  "thiserror 1.0.69",
@@ -1006,7 +1006,7 @@ dependencies = [
 [[package]]
 name = "themelios"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "extend",
  "glam",
@@ -1024,7 +1024,7 @@ dependencies = [
 [[package]]
 name = "themelios-archive"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "cp932",
  "gospel 0.1.0",
@@ -1033,7 +1033,7 @@ dependencies = [
 [[package]]
 name = "themelios-common"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "cp932",
  "extend",
@@ -1046,7 +1046,7 @@ dependencies = [
 [[package]]
 name = "themelios-macros"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "maud",
  "proc-macro2",
@@ -1058,7 +1058,7 @@ dependencies = [
 [[package]]
 name = "themelios-scena"
 version = "0.1.0"
-source = "git+https://github.com/lmaple0/Aureole.git?rev=9563e4e#9563e4e9f81b980834323c247e346ccc5522b50f"
+source = "git+https://github.com/lmaple0/Aureole.git?rev=987bbc9#987bbc9d188f38d615c34cd9f2cedaf0667a4354"
 dependencies = [
  "extend",
  "glam",

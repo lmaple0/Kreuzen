@@ -7,8 +7,9 @@ This maintained fork also provides an explicit legacy backend for the PC release
 Crossbell games and *Trails in the Sky*.
 
 Verified local corpus coverage currently includes *Trails from Zero*, *Trails to Azure*,
-*Trails in the Sky SC*, and *Trails in the Sky the 3rd*. The *Sky FC* profile is
-experimental until a legal FC corpus is available for validation. Static roundtrip coverage
+and the PC releases of all three *Trails in the Sky* games. FC was validated against three
+separate 491-file corpora from a legally installed Chinese-patched copy. That installation
+also contains other mods, so it is not a clean retail baseline. Static roundtrip coverage
 does not imply in-game runtime validation; see the reports under [`docs`](docs/).
 
 Kreuzen can roundtrip most modern scripts bytewise, with the remainder being things that are

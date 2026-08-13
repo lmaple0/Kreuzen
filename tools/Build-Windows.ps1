@@ -20,6 +20,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $repo 'README.md') -Destination $output -Force
     Copy-Item -LiteralPath (Join-Path $repo 'README_CN.md') -Destination $output -Force
     Copy-Item -LiteralPath (Join-Path $repo 'docs\p2-validation.zh-CN.md') -Destination $output -Force
+    Copy-Item -LiteralPath (Join-Path $repo 'docs\p4-sky-fc-validation.zh-CN.md') -Destination $output -Force
 
     $artifact = Join-Path $output 'kreuzen.exe'
     [pscustomobject]@{
