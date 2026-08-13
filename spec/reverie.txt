@@ -1226,7 +1226,7 @@ C50B
 C50C u8 u8 u8 u8 u8
 
 C6 'Bond'
-C600 'BondShowExpGain' u8 # parameter decides mode: 0 - default mode; 1 - quick mode, only displays info about level up
+C600 'BondShowExpGain' ~'BondShow' u8 # parameter decides mode: 0 - default mode; 1 - quick mode, only displays info about level up
 C601 'BondWait' # has to be called immediately after 'BondShowExpGain', otherwise the box is not displayed
 C602 'BondSetLevel' char u8
 C603 'BondAddLevel' char u8

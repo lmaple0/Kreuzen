@@ -14,7 +14,7 @@ macro_rules! spec {
 		mod parse_test {
 			use super::*;
 			$($(#[test] fn $name() {
-				LazyLock::force(&lines::$name);
+				LazyLock::force(&specs::$name);
 			})*)*
 		}
 
