@@ -32,6 +32,7 @@ record byte differences and second-decompile source stability.
 ## Usage
 
 For basic usage, drag a supported script or source file, or a folder containing such, onto the executable. Modern games use `.dat` and `.krz`; the Sky/Crossbell backend uses `._SN`/`.bin` and `.clm`. Outputs will be placed next to the input. For commandline usage, read `--help`.
+On Windows, launching the executable without an input displays the full help and waits for a key press instead of immediately closing.
 Kruzen will attempt to guess the game based on the containing folder name, but you can override this detection with either `--game cs1` or by renaming the executable itself to `kreuzen-cs1.exe`.
 
 Legacy games require an explicit game profile when the install path is not recognizable. Use

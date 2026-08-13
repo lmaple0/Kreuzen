@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use clap::Parser;
+use clap::{CommandFactory as _, Parser};
 use kreuzen::{Enc, Game};
 use kreuzen_legacy::{Encoding as LegacyEncoding, Game as LegacyGame, Layout as LegacyLayout, TextCodec};
 use kreuzen_syntax::{Print as _, diag};
@@ -155,6 +155,12 @@ fn main() -> ExitCode {
 		)
 		.init();
 	let args = Args::parse();
+	if args.files.is_empty() {
+		Args::command().name("kreuzen.exe").print_long_help().ok();
+		println!();
+		windows_wait();
+		return ExitCode::SUCCESS;
+	}
 
 	let mut success = true;
 
