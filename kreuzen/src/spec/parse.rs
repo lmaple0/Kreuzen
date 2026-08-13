@@ -193,3 +193,12 @@ fn derived_name(name: &str, p: Opcode, op: Opcode) -> String {
 	}
 	s
 }
+
+#[cfg(test)]
+mod tests {
+	#[test]
+	fn deprecated_alias_resolves_to_canonical_opcode() {
+		let spec = &*crate::spec::specs::cs3;
+		assert_eq!(spec.by_name.get("BondShow"), spec.by_name.get("BondShowExpGain"));
+	}
+}

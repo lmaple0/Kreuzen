@@ -155,6 +155,19 @@ pub fn parse(src: &str, spec: impl FnOnce(&ScenaInfo) -> &'static Spec, errors: 
 mod tests {
 	use super::*;
 
+	fn parse_errors(source: &str) -> Vec<String> {
+		let mut errors = Errors::new();
+		let scena = parse(source, |info| kreuzen::spec::for_game(info.game, info.variant), &mut errors);
+		assert!(scena.is_some());
+		errors.errors.into_iter().map(|error| error.main.desc).collect()
+	}
+
+	fn assert_recovers_inner_error(body: &str, marker: &str) {
+		let source = format!("scena \"test\" cs1;\nfn \"test\" {{ {body} }}");
+		let errors = parse_errors(&source);
+		assert!(errors.iter().any(|error| error.contains(marker)), "missing {marker:?} in {errors:?}");
+	}
+
 	#[test]
 	fn parses_gbk_header() {
 		let mut errors = Errors::new();
@@ -162,5 +175,37 @@ mod tests {
 		let (info, _) = parse_header(&tokens, &mut errors).unwrap();
 		assert_eq!(info.enc, Enc::Gbk);
 		assert!(errors.is_empty());
+	}
+
+	#[test]
+	fn malformed_if_header_still_checks_its_block() {
+		assert_recovers_inner_error("if { break; }", "break outside");
+	}
+
+	#[test]
+	fn malformed_while_header_still_checks_its_block() {
+		assert_recovers_inner_error("while { bogus; }", "unknown op");
+	}
+
+	#[test]
+	fn malformed_switch_header_still_checks_its_block() {
+		assert_recovers_inner_error("switch { continue; }", "continue outside");
+	}
+
+	#[test]
+	fn malformed_fork_lambda_header_still_checks_its_block() {
+		assert_recovers_inner_error("ForkLambda { break; }", "break outside");
+	}
+
+	#[test]
+	fn malformed_function_header_still_checks_its_block() {
+		let errors = parse_errors("scena \"test\" cs1;\nfn { break; }");
+		assert!(errors.iter().any(|error| error.contains("break outside")), "{errors:?}");
+	}
+
+	#[test]
+	fn deprecated_opcode_alias_parses_with_warning() {
+		let errors = parse_errors("scena \"test\" cs3;\nfn \"test\" { BondShow 0; }");
+		assert_eq!(errors, ["deprecated op name: use 'BondShowExpGain'"]);
 	}
 }
