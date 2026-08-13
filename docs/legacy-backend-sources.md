@@ -6,10 +6,11 @@ The legacy adapter uses Git dependencies pinned to the maintained Aureole fork:
 - `themelios`
 
 The dependency is pinned to commit
-`9563e4e` (`Complete Sky ED6 script roundtrip support`). It implements the
+`a9f2707` (`Limit truncated name tables to Sky FC`). It includes the
 ED6/ED7 scenario models, game-specific instruction sets, explicit codecs,
 native ED7 layout support, EOF-terminated ED6 names and compilable flat
-control-flow output.
+control-flow output. FC may omit trailing empty character names, while SC and
+the 3rd retain their explicit empty-name entries.
 
 This removes the sibling-directory build assumption and makes Cargo resolve the
 exact reviewed source revision. The dependency commit must exist on the public

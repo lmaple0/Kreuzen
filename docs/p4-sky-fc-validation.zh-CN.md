@@ -42,11 +42,12 @@ corpus 往返结果验证。
 
 ## 构建
 
-本次验证使用固定到 Aureole 提交 `987bbc9` 的 Windows release 构建：
+本次验证现已用固定到 Aureole 提交 `a9f2707` 的 Windows release 构建复核；
+该提交把尾部空名称省略规则严格限制在 FC，避免影响 SC 与 the 3rd：
 
 - 产物：`out/kreuzen-windows-x64/kreuzen.exe`；
-- 大小：7,212,032 字节；
-- SHA-256：`5AA5216A1545E22210921F84FE62E44457476FFFB28B64F603F77D34CC1843A8`。
+- 大小：7,242,240 字节；
+- SHA-256：`23D8516581FCD85CE012FF97F26369890DEBA038FE5F9E1F33B0A731A310D432`。
 
 ## 尚未完成
 
